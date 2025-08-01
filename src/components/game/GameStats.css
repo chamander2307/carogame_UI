@@ -1,0 +1,331 @@
+.game-stats-panel {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(139, 69, 19, 0.1);
+  max-width: 350px;
+  min-width: 300px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.stats-header h3 {
+  margin: 0;
+  color: #8b4513;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.game-timer {
+  background: linear-gradient(45deg, #8b4513, #a0522d);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(139, 69, 19, 0.3);
+}
+
+.players-stats {
+  margin-bottom: 20px;
+}
+
+.player-stat {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+}
+
+.player-stat.active {
+  background: rgba(139, 69, 19, 0.05);
+  border-color: rgba(139, 69, 19, 0.2);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.1);
+}
+
+.player-stat.winner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+  border-color: #10b981;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.player-symbol {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.player-symbol.x {
+  background: linear-gradient(45deg, #dc2626, #b91c1c);
+  color: white;
+}
+
+.player-symbol.o {
+  background: linear-gradient(45deg, #2563eb, #1d4ed8);
+  color: white;
+}
+
+.player-info h4 {
+  margin: 0;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.player-role {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.player-moves {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.move-count,
+.last-move {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.move-count .label,
+.last-move .label {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.move-count .value,
+.last-move .value {
+  color: #374151;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.winner-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(45deg, #10b981, #059669);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  animation: winner-pulse 2s ease-in-out infinite;
+}
+
+@keyframes winner-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.vs-divider {
+  text-align: center;
+  color: #8b4513;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin: 15px 0;
+  position: relative;
+}
+
+.vs-divider::before,
+.vs-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 2px;
+  background: linear-gradient(45deg, #8b4513, #a0522d);
+}
+
+.vs-divider::before {
+  left: 0;
+}
+
+.vs-divider::after {
+  right: 0;
+}
+
+.game-info {
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.info-item,
+.current-turn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.info-item:last-child,
+.current-turn:last-child {
+  margin-bottom: 0;
+}
+
+.info-item .label,
+.current-turn .label {
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.info-item .value,
+.current-turn .value {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.value.status.playing {
+  color: #10b981;
+}
+
+.value.status.won {
+  color: #f59e0b;
+}
+
+.value.status.draw {
+  color: #6b7280;
+}
+
+.turn-indicator.x {
+  color: #dc2626;
+}
+
+.turn-indicator.o {
+  color: #2563eb;
+}
+
+.move-history h4 {
+  margin: 0 0 10px 0;
+  color: #8b4513;
+  font-size: 1rem;
+}
+
+.history-list {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+
+.move-number {
+  color: #6b7280;
+  font-weight: 500;
+  min-width: 20px;
+}
+
+.move-symbol {
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.move-symbol.x {
+  color: #dc2626;
+}
+
+.move-symbol.o {
+  color: #2563eb;
+}
+
+.move-position {
+  color: #374151;
+  font-family: monospace;
+}
+
+.history-more {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.7rem;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Custom scrollbar for history */
+.history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.history-list::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+  background: #8b4513;
+  border-radius: 2px;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover {
+  background: #a0522d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .game-stats-panel {
+    max-width: 100%;
+    min-width: auto;
+    margin-bottom: 20px;
+  }
+  
+  .stats-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .game-timer {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .player-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .vs-divider::before,
+  .vs-divider::after {
+    width: 25%;
+  }
+}

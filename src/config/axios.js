@@ -1,14 +1,13 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: "http://localhost:8080/api", // URL backend Spring Boot
+  baseURL: "http://localhost:8080/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor để thêm token
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
@@ -22,13 +21,11 @@ instance.interceptors.request.use(
   }
 );
 
-// Response interceptor để xử lý token hết hạn
 instance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Xử lý token hết hạn
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -51,7 +48,6 @@ instance.interceptors.response.use(
           return instance(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh token thất bại, đăng xuất user
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");

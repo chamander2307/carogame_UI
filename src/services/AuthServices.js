@@ -1,7 +1,33 @@
 import instance from "../config/axios";
-import { jwtDecode } from "jwt-decode";
 import { getVietnameseMessage } from "../constants/VietNameseStatus";
-import { toast } from "react-toastify";
+
+//hàm chạy local
+export const getCurrentUser = () => {
+  try {
+    const userStr = localStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (error) {
+    console.error("Error parsing user data:", error);
+    return null;
+  }
+};
+
+export const isAuthenticated = () => {
+  const token = localStorage.getItem("accessToken");
+  const user = getCurrentUser();
+  return !!(token && user);
+};
+
+export const getAuthHeader = () => {
+  const token = localStorage.getItem("accessToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+export const clearAuthData = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+};
 
 export const refreshToken = async () => {
   try {
@@ -209,31 +235,4 @@ export const changePassword = async (changeData) => {
         "Đổi mật khẩu không thành công"
     );
   }
-};
-
-export const getCurrentUser = () => {
-  try {
-    const userStr = localStorage.getItem("user");
-    return userStr ? JSON.parse(userStr) : null;
-  } catch (error) {
-    console.error("Error parsing user data:", error);
-    return null;
-  }
-};
-
-export const isAuthenticated = () => {
-  const token = localStorage.getItem("accessToken");
-  const user = getCurrentUser();
-  return !!(token && user);
-};
-
-export const getAuthHeader = () => {
-  const token = localStorage.getItem("accessToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-export const clearAuthData = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
 };

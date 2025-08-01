@@ -1,6 +1,6 @@
 import React, { createContext, useEffect, useState } from "react";
 import { getUserProfile } from "../services/ProfileServices";
-import { jwtDecode } from "jwt-decode"; // Use named import
+import { jwtDecode } from "jwt-decode";
 
 export const UserContext = createContext();
 
@@ -20,13 +20,23 @@ export const UserProvider = ({ children }) => {
 
       try {
         console.log("Decoding token...");
-        const decoded = jwtDecode(token); // Use named jwtDecode
-
+        const decoded = jwtDecode(token);
         const isGoogleAccount = decoded.provider === "google";
 
-        const profile = await getUserProfile();
+        const profileResponse = await getUserProfile();
+        const profileData = profileResponse.data;
 
-        setUser({ ...profile, isGoogleAccount });
+        // Tạo full avatar URL từ relative path
+        const avatarUrl = profileData.avatarUrl
+          ? `http://localhost:8080${profileData.avatarUrl}`
+          : null;
+
+        setUser({
+          ...profileData,
+          isGoogleAccount,
+          fullName: profileData.displayName,
+          avatarUrl: avatarUrl,
+        });
         setIsLogin(true);
       } catch (err) {
         console.error("Error fetching profile or decoding token:", {
@@ -49,9 +59,35 @@ export const UserProvider = ({ children }) => {
   const logout = () => {
     console.log("Logging out user");
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
     setUser(null);
     setIsLogin(false);
     window.location.href = "/login";
+  };
+
+  const refreshUserProfile = async () => {
+    try {
+      const profileResponse = await getUserProfile();
+      const profileData = profileResponse.data;
+
+      // Tạo full avatar URL từ relative path
+      const avatarUrl = profileData.avatarUrl
+        ? `http://localhost:8080${profileData.avatarUrl}`
+        : null;
+
+      setUser((prev) => ({
+        ...prev,
+        ...profileData,
+        fullName: profileData.displayName,
+        avatarUrl: avatarUrl,
+      }));
+
+      return profileResponse;
+    } catch (error) {
+      console.error("Error refreshing profile:", error);
+      throw error;
+    }
   };
 
   return (
@@ -63,6 +99,7 @@ export const UserProvider = ({ children }) => {
         setUser,
         setIsLogin,
         logout,
+        refreshUserProfile,
       }}
     >
       {children}
