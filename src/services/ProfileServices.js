@@ -29,10 +29,34 @@ export const getUserProfile = async () => {
 // Update profile theo UpdateProfileRequest DTO
 export const updateProfile = async (profileData) => {
   try {
+    // Validate username (required)
+    if (!profileData.username || profileData.username.trim().length === 0) {
+      throw new Error("Username is required");
+    }
+
+    const username = profileData.username.trim();
+    if (username.length < 3 || username.length > 20) {
+      throw new Error("Username must be between 3 and 20 characters");
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      throw new Error(
+        "Username can only contain letters, numbers and underscores"
+      );
+    }
+
+    // Validate displayName (optional)
+    const displayName = profileData.displayName
+      ? profileData.displayName.trim()
+      : null;
+    if (displayName && displayName.length > 50) {
+      throw new Error("Display name cannot exceed 50 characters");
+    }
+
     // Gửi theo UpdateProfileRequest DTO format
     const requestData = {
-      username: profileData.username,
-      displayName: profileData.displayName,
+      username: username,
+      displayName: displayName || null,
     };
 
     const response = await instance.put("/user-profile", requestData);
@@ -59,71 +83,34 @@ export const updateProfile = async (profileData) => {
   }
 };
 
-// Update display name only theo UserProfileUpdateRequest DTO
+// Update display name only - endpoint doesn't exist in backend
+// Use updateProfile() instead for all profile updates
 export const updateDisplayName = async (displayName) => {
-  try {
-    // Gửi theo UserProfileUpdateRequest DTO format
-    const requestData = {
-      displayName: displayName,
-    };
+  console.warn(
+    "updateDisplayName() endpoint /user-profile/display-name doesn't exist in backend"
+  );
+  console.info("Use updateProfile() method instead for updating display name");
 
-    const response = await instance.put(
-      "/user-profile/display-name",
-      requestData
-    );
-    const data = response.data;
-    if (data?.success || data?.statusCode === 200) {
-      return {
-        success: true,
-        data: data.data,
-        message:
-          getVietnameseMessage(data.statusCode, "Cập nhật tên hiển thị") ||
-          "Cập nhật tên hiển thị thành công",
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Cập nhật tên hiển thị") ||
-        "Cập nhật tên hiển thị không thành công"
-    );
-  } catch (error) {
-    const code = error.response?.data?.statusCode;
-    throw new Error(
-      getVietnameseMessage(code, "Cập nhật tên hiển thị") ||
-        "Cập nhật tên hiển thị không thành công"
-    );
-  }
+  // Redirect to updateProfile method
+  return updateProfile({ displayName });
 };
 
-// Update avatar - separate endpoint
+// Update avatar - endpoint doesn't exist in backend
 export const updateAvatar = async (avatarFile) => {
-  try {
-    const formData = new FormData();
-    formData.append("avatar", avatarFile);
-
-    const response = await instance.post("/user-profile/avatar", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    const data = response.data;
-    if (data?.success || data?.statusCode === 200) {
-      return {
-        success: true,
-        data: data.data,
-        message:
-          getVietnameseMessage(data.statusCode, "Cập nhật avatar") ||
-          "Cập nhật avatar thành công",
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Cập nhật avatar") ||
-        "Cập nhật avatar không thành công"
-    );
-  } catch (error) {
-    const code = error.response?.data?.statusCode;
-    throw new Error(
-      getVietnameseMessage(code, "Cập nhật avatar") ||
-        "Cập nhật avatar không thành công"
-    );
-  }
+  console.warn(
+    "updateAvatar() endpoint /user-profile/avatar doesn't exist in backend UserProfileController"
+  );
+  throw new Error(
+    "Avatar upload functionality not available - endpoint not implemented in backend"
+  );
 };
+
+// Default export with all profile functions
+const ProfileService = {
+  getUserProfile,
+  updateProfile,
+  updateDisplayName,
+  updateAvatar,
+};
+
+export default ProfileService;

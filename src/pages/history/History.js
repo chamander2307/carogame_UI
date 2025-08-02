@@ -1,73 +1,108 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { UserContext } from "../../context/UserContext";
+import { GameRoomService } from "../../services";
+import { toast } from "react-toastify";
 import "./index.css";
 
 const HistoryPage = () => {
+  const { user } = useContext(UserContext);
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  // Mock data cho lịch sử trận đấu
-  const [gameHistory] = useState([
-    {
-      id: 1,
-      opponent: "ProGamer123",
-      result: "win",
-      duration: "15:30",
-      date: "2025-01-27",
-      moves: 42,
-      winCondition: "5 in row",
-    },
-    {
-      id: 2,
-      opponent: "ChessLover",
-      result: "lose",
-      duration: "22:15",
-      date: "2025-01-26",
-      moves: 67,
-      winCondition: "5 in row",
-    },
-    {
-      id: 3,
-      opponent: "GameMaster",
-      result: "draw",
-      duration: "45:20",
-      date: "2025-01-25",
-      moves: 225,
-      winCondition: "board full",
-    },
-    {
-      id: 4,
-      opponent: "NewPlayer99",
-      result: "win",
-      duration: "8:45",
-      date: "2025-01-24",
-      moves: 28,
-      winCondition: "5 in row",
-    },
-    {
-      id: 5,
-      opponent: "StrategicMind",
-      result: "win",
-      duration: "18:30",
-      date: "2025-01-23",
-      moves: 55,
-      winCondition: "5 in row",
-    },
-  ]);
+  // Real data from GameRoomService
+  const [gameHistory, setGameHistory] = useState([]);
+  const [userStats, setUserStats] = useState({
+    totalGames: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    winRate: 0,
+  });
+
+  useEffect(() => {
+    loadGameHistory();
+    loadUserStats();
+  }, [currentPage, filter]);
+
+  const loadGameHistory = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        size: 10,
+        sort: "gameEndedAt",
+        direction: "desc",
+      };
+
+      // Apply filter if not 'all'
+      if (filter !== "all") {
+        params.result = filter;
+      }
+
+      const response = await GameRoomService.getGameHistory(params);
+      console.log(response);
+      if (response.success && response.data) {
+        const historyData = response.data;
+        setGameHistory(historyData.content || []);
+        setTotalPages(historyData.totalPages || 0);
+      } else {
+        toast.error("Không thể tải lịch sử trận đấu");
+      }
+    } catch (error) {
+      console.error("Failed to load game history:", error);
+      toast.error("Có lỗi xảy ra khi tải lịch sử trận đấu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserStats = async () => {
+    try {
+      // Get game history to calculate stats
+      const response = await GameRoomService.getGameHistory({
+        page: 0,
+        size: 1000, // Get all games for stats calculation
+      });
+
+      if (response.success && response.data) {
+        const games = response.data.content || [];
+        const totalGames = games.length;
+        const wins = games.filter((game) => game.result === "WIN").length;
+        const losses = games.filter((game) => game.result === "LOSE").length;
+        const draws = games.filter((game) => game.result === "DRAW").length;
+        const winRate = totalGames > 0 ? (wins / totalGames) * 100 : 0;
+
+        setUserStats({
+          totalGames,
+          wins,
+          losses,
+          draws,
+          winRate,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load user stats:", error);
+    }
+  };
 
   const filteredGames = gameHistory.filter((game) => {
-    const matchesFilter = filter === "all" || game.result === filter;
-    const matchesSearch = game.opponent
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    if (!searchTerm) return true;
+    const opponent = game.opponent || game.opponentName || "";
+    return opponent.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const getResultText = (result) => {
     switch (result) {
+      case "WIN":
       case "win":
         return "Thắng";
+      case "LOSE":
       case "lose":
         return "Thua";
+      case "DRAW":
       case "draw":
         return "Hòa";
       default:
@@ -76,19 +111,92 @@ const HistoryPage = () => {
   };
 
   const getResultClass = (result) => {
-    return `result ${result}`;
+    const resultLower = result?.toLowerCase();
+    return `result ${resultLower}`;
   };
 
-  const handleViewGame = (gameId) => {
-    console.log("Viewing game:", gameId);
-    // Logic xem lại trận đấu sẽ được implement sau
+  const formatDuration = (duration) => {
+    if (!duration) return "N/A";
+    if (typeof duration === "string" && duration.includes(":")) {
+      return duration;
+    }
+    // Convert seconds to mm:ss format
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("vi-VN");
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const handleViewGame = async (gameId) => {
+    try {
+      const response = await GameRoomService.getRoomDetail(gameId);
+      if (response.success && response.data) {
+        // Open game replay modal or navigate to game detail page
+        console.log("Game detail:", response.data);
+        toast.info("Tính năng xem lại trận đấu sẽ được cập nhật sớm");
+      } else {
+        toast.error("Không thể tải chi tiết trận đấu");
+      }
+    } catch (error) {
+      console.error("Failed to load game detail:", error);
+      toast.error("Có lỗi xảy ra khi tải chi tiết trận đấu");
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const StatCard = ({ title, value, className = "" }) => (
+    <div className={`stat-card ${className}`}>
+      <div className="stat-value">{value}</div>
+      <div className="stat-title">{title}</div>
+    </div>
+  );
 
   return (
     <div className="history-page">
       <div className="history-container">
         <div className="history-header">
           <h1>Lịch sử trận đấu</h1>
+
+          {/* User Statistics */}
+          <div className="user-stats">
+            <StatCard
+              title="Tổng trận"
+              value={userStats.totalGames}
+              className="total"
+            />
+            <StatCard title="Thắng" value={userStats.wins} className="wins" />
+            <StatCard
+              title="Thua"
+              value={userStats.losses}
+              className="losses"
+            />
+            <StatCard title="Hòa" value={userStats.draws} className="draws" />
+            <StatCard
+              title="Tỷ lệ thắng"
+              value={`${(userStats.winRate || 0).toFixed(1)}%`}
+              className="winrate"
+            />
+          </div>
         </div>
 
         <div className="history-filters">
@@ -117,84 +225,79 @@ const HistoryPage = () => {
           </div>
         </div>
 
-        <div className="history-stats">
-          <div className="stat-card">
-            <div className="stat-value">
-              {gameHistory.filter((g) => g.result === "win").length}
+        <div className="history-content">
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Đang tải lịch sử trận đấu...</p>
             </div>
-            <div className="stat-label">Trận thắng</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">
-              {gameHistory.filter((g) => g.result === "lose").length}
-            </div>
-            <div className="stat-label">Trận thua</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">
-              {gameHistory.filter((g) => g.result === "draw").length}
-            </div>
-            <div className="stat-label">Trận hòa</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">
-              {Math.round(
-                (gameHistory.filter((g) => g.result === "win").length /
-                  gameHistory.length) *
-                  100
-              )}
-              %
-            </div>
-            <div className="stat-label">Tỉ lệ thắng</div>
-          </div>
-        </div>
-
-        <div className="games-list">
-          {filteredGames.length === 0 ? (
+          ) : filteredGames.length === 0 ? (
             <div className="no-games">
-              <p>Không tìm thấy trận đấu nào phù hợp với bộ lọc.</p>
+              <p>Không có trận đấu nào được tìm thấy</p>
             </div>
           ) : (
-            <div className="games-table">
-              <div className="table-header">
-                <div className="col-opponent">Đối thủ</div>
-                <div className="col-result">Kết quả</div>
-                <div className="col-duration">Thời gian</div>
-                <div className="col-moves">Số nước</div>
-                <div className="col-date">Ngày chơi</div>
-                <div className="col-actions">Hành động</div>
-              </div>
-              {filteredGames.map((game) => (
-                <div key={game.id} className="table-row">
-                  <div className="col-opponent">
-                    <div className="opponent-info">
-                      <div className="opponent-avatar">
-                        {game.opponent.charAt(0).toUpperCase()}
+            <>
+              <div className="games-list">
+                {filteredGames.map((game) => (
+                  <div key={game.id || game.gameId} className="game-item">
+                    <div className="game-info">
+                      <div className="opponent-info">
+                        <span className="opponent-name">
+                          {game.opponent || game.opponentName || "Unknown"}
+                        </span>
+                        <span className={getResultClass(game.result)}>
+                          {getResultText(game.result)}
+                        </span>
                       </div>
-                      <span>{game.opponent}</span>
+                      <div className="game-details">
+                        <span className="duration">
+                          ⏱️ {formatDuration(game.duration)}
+                        </span>
+                        <span className="moves">
+                          🎯 {game.moves || game.totalMoves || 0} nước
+                        </span>
+                        <span className="date">
+                          📅 {formatDate(game.date || game.createdAt)}
+                        </span>
+                        <span className="win-condition">
+                          🏆{" "}
+                          {game.winCondition || game.endReason || "5 liên tiếp"}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="col-result">
-                    <span className={getResultClass(game.result)}>
-                      {getResultText(game.result)}
-                    </span>
-                  </div>
-                  <div className="col-duration">{game.duration}</div>
-                  <div className="col-moves">{game.moves}</div>
-                  <div className="col-date">
-                    {new Date(game.date).toLocaleDateString("vi-VN")}
-                  </div>
-                  <div className="col-actions">
                     <button
-                      className="btn-view"
-                      onClick={() => handleViewGame(game.id)}
+                      className="view-game-btn"
+                      onClick={() => handleViewGame(game.id || game.gameId)}
                     >
                       Xem lại
                     </button>
                   </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="pagination-btn"
+                    disabled={currentPage === 0}
+                    onClick={handlePreviousPage}
+                  >
+                    ← Trước
+                  </button>
+                  <span className="page-info">
+                    Trang {currentPage + 1} / {totalPages}
+                  </span>
+                  <button
+                    className="pagination-btn"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={handleNextPage}
+                  >
+                    Sau →
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

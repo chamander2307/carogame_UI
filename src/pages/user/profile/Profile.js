@@ -1,6 +1,7 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { UserContext } from "../../../context/UserContext";
 import { updateProfile, updateAvatar } from "../../../services/ProfileServices";
+import { GameRoomService } from "../../../services";
 import ChangePassword from "../../../components/auth/ChangePassword";
 import { toast } from "react-toastify";
 import "./index.css";
@@ -20,14 +21,14 @@ const ProfilePage = () => {
     email: user?.email || "",
   });
 
-  const [stats] = useState({
-    gamesPlayed: 45,
-    gamesWon: 32,
-    gamesLost: 11,
-    gamesDraw: 2,
-    winRate: 71,
-    longestWinStreak: 8,
-    favoriteOpponent: "ProGamer123",
+  const [stats, setStats] = useState({
+    gamesPlayed: 0,
+    gamesWon: 0,
+    gamesLost: 0,
+    gamesDraw: 0,
+    winRate: 0,
+    longestWinStreak: 0,
+    favoriteOpponent: "N/A",
   });
 
   useEffect(() => {
@@ -37,8 +38,37 @@ const ProfilePage = () => {
         displayName: user.displayName || user.fullName || "",
         email: user.email || "",
       });
+
+      // Load user statistics from GameService
+      loadUserStats();
     }
   }, [user]);
+
+  const loadUserStats = async () => {
+    try {
+      // Since there's no getUserStats endpoint in backend, use user's room history as fallback
+      const response = await GameRoomService.getUserRooms();
+      if (response.success && response.data) {
+        const rooms = response.data;
+        // Calculate basic stats from room data if available
+        const completedGames = rooms.filter(
+          (room) => room.status === "COMPLETED"
+        ).length;
+        setStats({
+          gamesPlayed: completedGames,
+          gamesWon: 0, // Would need game results to calculate
+          gamesLost: 0,
+          gamesDraw: 0,
+          winRate: 0,
+          longestWinStreak: 0,
+          favoriteOpponent: "N/A",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load user stats:", error);
+      // Keep default stats if loading fails
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
