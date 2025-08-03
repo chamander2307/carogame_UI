@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Register.css";
-import { register as registerService } from "../../../services/AuthServices";
+import AuthServices from "../../../services/AuthServices";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import { toast } from "react-toastify";
 
@@ -79,8 +79,8 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      // Gửi data theo UserCreation DTO format
-      const data = await registerService({
+      // Gọi AuthServices.register với userData
+      const data = await AuthServices.register({
         username: formData.username,
         email: formData.email,
         displayName: formData.displayName,

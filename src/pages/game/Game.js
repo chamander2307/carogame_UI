@@ -1,11 +1,11 @@
 import React from "react";
-import GameBoard from "../../components/game/GameBoard";
+import GameInterface from "../../components/game/GameInterface";
 import "./index.css";
 
 const GamePage = () => {
   return (
     <div className="game-page">
-      <GameBoard />
+      <GameInterface />
     </div>
   );
 };

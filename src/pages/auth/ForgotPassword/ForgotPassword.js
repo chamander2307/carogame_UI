@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { forgotPassword } from "../../../services/AuthServices";
+import AuthServices from "../../../services/AuthServices";
 import { toast } from "react-toastify";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import "./ForgotPassword.css";
@@ -31,8 +31,10 @@ const ForgotPasswordPage = () => {
 
     setLoading(true);
     try {
-      // Gửi theo ForgotPasswordRequest DTO format
-      const result = await forgotPassword(email.trim().toLowerCase());
+      // Gọi AuthServices.forgotPassword
+      const result = await AuthServices.forgotPassword(
+        email.trim().toLowerCase()
+      );
 
       if (result.success) {
         setIsSuccess(true);

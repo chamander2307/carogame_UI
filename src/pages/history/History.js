@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../../context/UserContext";
-import { GameRoomService } from "../../services";
+import StatisticsService from "../../services/StatisticsService";
 import { toast } from "react-toastify";
+import { getVietnameseMessage } from "../../constants/VietNameseStatus";
 import "./index.css";
 
 const HistoryPage = () => {
@@ -11,49 +12,59 @@ const HistoryPage = () => {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  // Real data from GameRoomService
   const [gameHistory, setGameHistory] = useState([]);
   const [userStats, setUserStats] = useState({
-    totalGames: 0,
-    wins: 0,
-    losses: 0,
-    draws: 0,
+    totalGamesPlayed: 0,
+    totalWins: 0,
+    totalLosses: 0,
+    totalDraws: 0,
     winRate: 0,
   });
 
   useEffect(() => {
+    if (!user) return;
     loadGameHistory();
     loadUserStats();
-  }, [currentPage, filter]);
+  }, [user, currentPage]);
 
   const loadGameHistory = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: currentPage,
-        size: 10,
-        sort: "gameEndedAt",
-        direction: "desc",
-      };
-
-      // Apply filter if not 'all'
-      if (filter !== "all") {
-        params.result = filter;
-      }
-
-      const response = await GameRoomService.getGameHistory(params);
-      console.log(response);
+      const response = await StatisticsService.getUserGameHistory(
+        currentPage,
+        10,
+        "desc"
+      );
       if (response.success && response.data) {
-        const historyData = response.data;
-        setGameHistory(historyData.content || []);
-        setTotalPages(historyData.totalPages || 0);
+        setGameHistory(response.data.content || []);
+        setTotalPages(response.data.totalPages || 0);
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Lấy lịch sử game") ||
+            response.message ||
+            "Tải lịch sử trận đấu thành công"
+        );
       } else {
-        toast.error("Không thể tải lịch sử trận đấu");
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Lấy lịch sử game") ||
+            response.message ||
+            "Không thể tải lịch sử trận đấu"
+        );
       }
     } catch (error) {
-      console.error("Failed to load game history:", error);
-      toast.error("Có lỗi xảy ra khi tải lịch sử trận đấu");
+      console.error("Failed to load game history:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy lịch sử game"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Có lỗi xảy ra khi tải lịch sử trận đấu"
+      );
     } finally {
       setLoading(false);
     }
@@ -61,52 +72,64 @@ const HistoryPage = () => {
 
   const loadUserStats = async () => {
     try {
-      // Get game history to calculate stats
-      const response = await GameRoomService.getGameHistory({
-        page: 0,
-        size: 1000, // Get all games for stats calculation
-      });
-
+      const response = await StatisticsService.getUserStats();
       if (response.success && response.data) {
-        const games = response.data.content || [];
-        const totalGames = games.length;
-        const wins = games.filter((game) => game.result === "WIN").length;
-        const losses = games.filter((game) => game.result === "LOSE").length;
-        const draws = games.filter((game) => game.result === "DRAW").length;
-        const winRate = totalGames > 0 ? (wins / totalGames) * 100 : 0;
-
         setUserStats({
-          totalGames,
-          wins,
-          losses,
-          draws,
-          winRate,
+          totalGamesPlayed: response.data.totalGamesPlayed || 0,
+          totalWins: response.data.totalWins || 0,
+          totalLosses: response.data.totalLosses || 0,
+          totalDraws: response.data.totalDraws || 0,
+          winRate: response.data.winRate || 0,
         });
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
+            response.message ||
+            "Tải thống kê người dùng thành công"
+        );
+      } else {
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
+            response.message ||
+            "Không thể tải thống kê người dùng"
+        );
       }
     } catch (error) {
-      console.error("Failed to load user stats:", error);
+      console.error("Failed to load user stats:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy thống kê"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Có lỗi xảy ra khi tải thống kê người dùng"
+      );
     }
   };
 
   const filteredGames = gameHistory.filter((game) => {
+    if (filter !== "all" && game.gameResult?.toLowerCase() !== filter) {
+      return false;
+    }
     if (!searchTerm) return true;
-    const opponent = game.opponent || game.opponentName || "";
+    const opponent = game.opponentName || "";
     return opponent.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const getResultText = (result) => {
-    switch (result) {
-      case "WIN":
+    switch (result?.toLowerCase()) {
       case "win":
         return "Thắng";
-      case "LOSE":
       case "lose":
         return "Thua";
-      case "DRAW":
       case "draw":
         return "Hòa";
       default:
-        return result;
+        return result || "N/A";
     }
   };
 
@@ -115,14 +138,10 @@ const HistoryPage = () => {
     return `result ${resultLower}`;
   };
 
-  const formatDuration = (duration) => {
-    if (!duration) return "N/A";
-    if (typeof duration === "string" && duration.includes(":")) {
-      return duration;
-    }
-    // Convert seconds to mm:ss format
-    const minutes = Math.floor(duration / 60);
-    const seconds = duration % 60;
+  const formatDuration = (durationMinutes) => {
+    if (!durationMinutes) return "N/A";
+    const minutes = Math.floor(durationMinutes);
+    const seconds = Math.round((durationMinutes - minutes) * 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
@@ -138,17 +157,32 @@ const HistoryPage = () => {
 
   const handleViewGame = async (gameId) => {
     try {
-      const response = await GameRoomService.getRoomDetail(gameId);
+      const response = await StatisticsService.getGameReplay(gameId);
       if (response.success && response.data) {
-        // Open game replay modal or navigate to game detail page
-        console.log("Game detail:", response.data);
+        console.log("Game replay:", response.data);
         toast.info("Tính năng xem lại trận đấu sẽ được cập nhật sớm");
       } else {
-        toast.error("Không thể tải chi tiết trận đấu");
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Lấy replay game") ||
+            response.message ||
+            "Không thể tải replay trận đấu"
+        );
       }
     } catch (error) {
-      console.error("Failed to load game detail:", error);
-      toast.error("Có lỗi xảy ra khi tải chi tiết trận đấu");
+      console.error("Failed to load game replay:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy replay game"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Có lỗi xảy ra khi tải replay trận đấu"
+      );
     }
   };
 
@@ -181,16 +215,24 @@ const HistoryPage = () => {
           <div className="user-stats">
             <StatCard
               title="Tổng trận"
-              value={userStats.totalGames}
+              value={userStats.totalGamesPlayed}
               className="total"
             />
-            <StatCard title="Thắng" value={userStats.wins} className="wins" />
+            <StatCard
+              title="Thắng"
+              value={userStats.totalWins}
+              className="wins"
+            />
             <StatCard
               title="Thua"
-              value={userStats.losses}
+              value={userStats.totalLosses}
               className="losses"
             />
-            <StatCard title="Hòa" value={userStats.draws} className="draws" />
+            <StatCard
+              title="Hòa"
+              value={userStats.totalDraws}
+              className="draws"
+            />
             <StatCard
               title="Tỷ lệ thắng"
               value={`${(userStats.winRate || 0).toFixed(1)}%`}
@@ -239,35 +281,34 @@ const HistoryPage = () => {
             <>
               <div className="games-list">
                 {filteredGames.map((game) => (
-                  <div key={game.id || game.gameId} className="game-item">
+                  <div key={game.gameId} className="game-item">
                     <div className="game-info">
                       <div className="opponent-info">
                         <span className="opponent-name">
-                          {game.opponent || game.opponentName || "Unknown"}
+                          {game.opponentName || "Unknown"}
                         </span>
-                        <span className={getResultClass(game.result)}>
-                          {getResultText(game.result)}
+                        <span className={getResultClass(game.gameResult)}>
+                          {getResultText(game.gameResult)}
                         </span>
                       </div>
                       <div className="game-details">
                         <span className="duration">
-                          ⏱️ {formatDuration(game.duration)}
+                          ⏱️ {formatDuration(game.gameDurationMinutes)}
                         </span>
                         <span className="moves">
-                          🎯 {game.moves || game.totalMoves || 0} nước
+                          🎯 {game.totalMoves || 0} nước
                         </span>
                         <span className="date">
-                          📅 {formatDate(game.date || game.createdAt)}
+                          📅 {formatDate(game.gameEndTime)}
                         </span>
                         <span className="win-condition">
-                          🏆{" "}
-                          {game.winCondition || game.endReason || "5 liên tiếp"}
+                          🏆 {game.endReason || "N/A"}
                         </span>
                       </div>
                     </div>
                     <button
                       className="view-game-btn"
-                      onClick={() => handleViewGame(game.id || game.gameId)}
+                      onClick={() => handleViewGame(game.gameId)}
                     >
                       Xem lại
                     </button>

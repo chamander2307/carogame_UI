@@ -11,6 +11,11 @@ import { UserProvider } from "./context/UserContext";
 import Header from "./components/common/Header";
 import AppRoutes from "./routes/AppRoute";
 
+// Debug tools (chỉ trong development)
+if (process.env.NODE_ENV === "development") {
+  import("./utils/debugAuth");
+}
+
 function App() {
   return (
     <UserProvider>

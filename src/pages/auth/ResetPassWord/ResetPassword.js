@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { resetPassword } from "../../../services/AuthServices";
+import AuthServices from "../../../services/AuthServices";
 import { toast } from "react-toastify";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import "./ResetPassword.css";
@@ -25,7 +25,7 @@ const ResetPasswordPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -46,7 +46,11 @@ const ResetPasswordPage = () => {
     }
 
     // Password validation (theo pattern tương tự LoginRequest)
-    if (!formData.newPassword || formData.newPassword.length < 8 || formData.newPassword.length > 30) {
+    if (
+      !formData.newPassword ||
+      formData.newPassword.length < 8 ||
+      formData.newPassword.length > 30
+    ) {
       toast.error("Mật khẩu mới phải từ 8-30 ký tự!");
       return false;
     }
@@ -68,12 +72,12 @@ const ResetPasswordPage = () => {
 
     setLoading(true);
     try {
-      // Gửi theo ResetPasswordRequest DTO format
-      const result = await resetPassword({
-        email: formData.email.trim().toLowerCase(),
-        otp: formData.otp,
-        newPassword: formData.newPassword,
-      });
+      // Gọi AuthServices.resetPassword
+      const result = await AuthServices.resetPassword(
+        formData.email.trim().toLowerCase(),
+        formData.otp,
+        formData.newPassword
+      );
 
       if (result.success) {
         toast.success(result.message || "Đặt lại mật khẩu thành công!");

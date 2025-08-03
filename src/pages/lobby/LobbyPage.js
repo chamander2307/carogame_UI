@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext";
-import GameServices from "../../services/GameServices";
+import RoomService from "../../services/RoomService";
 import AuthServices from "../../services/AuthServices";
 import { toast } from "react-toastify";
 import "./LobbyPage.css";
@@ -17,24 +17,28 @@ const LobbyPage = () => {
   const [isPrivate, setIsPrivate] = useState(false);
 
   // Load danh sách phòng công khai
-  const loadRooms = async () => {
+  const loadRooms = async (showNotification = true) => {
     try {
       setLoading(true);
-      const response = await GameServices.getPublicRooms();
-      console.log("Response from getPublicRooms:", response); // Debug dữ liệu trả về
-      if (response.success && Array.isArray(response.data)) {
+      const response = await RoomService.getPublicRooms();
+      console.log("Response from getPublicRooms:", response);
+      if (response && response.success && Array.isArray(response.data)) {
         setRooms(response.data);
       } else {
-        console.warn("Response data is not an array:", response.data);
-        setRooms([]); // Gán mảng rỗng nếu data không phải mảng
-        toast.error(response.message || "Không thể tải danh sách phòng");
+        console.warn("Response data is not an array:", response?.data);
+        setRooms([]);
+        if (response && response.message && showNotification) {
+          toast.error(response.message);
+        }
       }
     } catch (error) {
       console.error("Failed to load rooms:", error);
-      setRooms([]); // Gán mảng rỗng khi có lỗi
-      toast.error(
-        error.message || "Lỗi kết nối, không thể tải danh sách phòng"
-      );
+      setRooms([]);
+      if (showNotification) {
+        toast.error(
+          error.message || "Lỗi kết nối, không thể tải danh sách phòng"
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -52,19 +56,19 @@ const LobbyPage = () => {
     }
 
     try {
-      const response = await GameServices.createRoom({
+      const response = await RoomService.createRoom({
         name: newRoomName.trim(),
         isPrivate,
       });
 
-      if (response.success && response.data) {
+      if (response && response.success && response.data) {
         toast.success(response.message || "Tạo phòng thành công!");
         setShowCreateModal(false);
         setNewRoomName("");
         setIsPrivate(false);
         navigate(`/game?roomId=${response.data.id}`);
       } else {
-        toast.error(response.message || "Không thể tạo phòng");
+        toast.error(response?.message || "Không thể tạo phòng");
       }
     } catch (error) {
       console.error("Failed to create room:", error);
@@ -86,18 +90,35 @@ const LobbyPage = () => {
       }
 
       const response = isPrivate
-        ? await GameServices.joinRoomByCode(joinCode)
-        : await GameServices.joinRoomById(roomId);
+        ? await RoomService.joinRoomByCode(joinCode)
+        : await RoomService.joinRoomById(roomId);
 
-      if (response.success && response.data) {
+      if (response && response.success && response.data) {
         toast.success(response.message || "Vào phòng thành công!");
         navigate(`/game?roomId=${response.data.id || roomId}`);
       } else {
-        toast.error(response.message || "Không thể vào phòng");
+        toast.error(response?.message || "Không thể vào phòng");
       }
     } catch (error) {
       console.error("Failed to join room:", error);
       toast.error(error.message || "Lỗi kết nối, không thể vào phòng");
+    }
+  };
+
+  const handleQuickPlay = async () => {
+    try {
+      const response = await RoomService.quickPlay();
+      if (response && response.success && response.data) {
+        toast.success(response.message || "Tham gia chơi nhanh thành công!");
+        navigate(`/game?roomId=${response.data.id}`);
+      } else {
+        toast.error(response?.message || "Không thể tham gia chơi nhanh");
+      }
+    } catch (error) {
+      console.error("Failed to quick play:", error);
+      toast.error(
+        error.message || "Lỗi kết nối, không thể tham gia chơi nhanh"
+      );
     }
   };
 
@@ -107,11 +128,13 @@ const LobbyPage = () => {
       return;
     }
 
-    loadRooms();
+    // Load rooms lần đầu với notification
+    loadRooms(true);
 
-    // Tự động refresh mỗi 10 giây
-    const interval = setInterval(loadRooms, 10000);
-    return () => clearInterval(interval);
+    // Tắt auto-refresh để tránh spam API calls
+    // User có thể click nút "Làm mới" để update manual
+    // const interval = setInterval(() => loadRooms(false), 30000);
+    // return () => clearInterval(interval);
   }, [user, navigate]);
 
   if (!user || !AuthServices.isAuthenticated()) {
@@ -125,7 +148,7 @@ const LobbyPage = () => {
         <div className="lobby-header">
           <h1>🎮 Lobby Game Caro</h1>
           <div className="user-info">
-            <span>Xin chào, {user.username}!</span>
+            <span>Xin chào, {user?.username || "Guest"}!</span>
             <button
               className="btn-logout"
               onClick={() => {
@@ -154,36 +177,23 @@ const LobbyPage = () => {
           >
             🔄 Làm mới
           </button>
-          <button
-            className="btn-quick-play"
-            onClick={async () => {
-              try {
-                const response = await GameServices.quickPlay();
-                if (response.success && response.data) {
-                  toast.success(
-                    response.message || "Tham gia chơi nhanh thành công!"
-                  );
-                  navigate(`/game?roomId=${response.data.id}`);
-                } else {
-                  toast.error(
-                    response.message || "Không thể tham gia chơi nhanh"
-                  );
-                }
-              } catch (error) {
-                console.error("Failed to quick play:", error);
-                toast.error(
-                  error.message || "Lỗi kết nối, không thể tham gia chơi nhanh"
-                );
-              }
-            }}
-          >
+          <button className="btn-quick-play" onClick={handleQuickPlay}>
             ⚡ Chơi nhanh
           </button>
         </div>
 
         {/* Room List */}
         <div className="rooms-section">
-          <h2>Danh sách phòng ({rooms.length})</h2>
+          <div className="rooms-header">
+            <h2>Danh sách phòng ({rooms.length})</h2>
+            <button 
+              className="btn-refresh" 
+              onClick={() => loadRooms(true)}
+              disabled={loading}
+            >
+              🔄 Làm mới
+            </button>
+          </div>
 
           {loading ? (
             <div className="loading">

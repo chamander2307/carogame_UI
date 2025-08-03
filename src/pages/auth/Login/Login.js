@@ -1,14 +1,14 @@
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
-import { login as loginService } from "../../../services/AuthServices";
+import AuthServices from "../../../services/AuthServices";
 import { UserContext } from "../../../context/UserContext";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import { toast } from "react-toastify";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { setUser, setIsLogin } = useContext(UserContext);
+  const { handleLoginSuccess } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -61,21 +61,24 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      // Gửi data theo LoginRequest DTO format
-      const data = await loginService({
-        username: formData.username,
-        password: formData.password,
-      });
+      // Gọi AuthServices.login với username và password
+      const data = await AuthServices.login(
+        formData.username,
+        formData.password
+      );
 
       if (!data.success) {
         throw new Error(data.message || "Đăng nhập không thành công");
       }
 
-      // Update user context with login data
-      setUser(data.data.user);
-      setIsLogin(true);
+      // Sử dụng handleLoginSuccess từ UserContext
+      const loginSuccess = handleLoginSuccess(data.data);
 
-      console.log("Data login returned:", data);
+      if (!loginSuccess) {
+        throw new Error("Không thể cập nhật thông tin người dùng");
+      }
+
+      console.log("Login successful:", data);
       toast.success("Đăng nhập thành công!", {
         position: "top-right",
         autoClose: 2000,

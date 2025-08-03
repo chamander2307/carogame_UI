@@ -1,8 +1,5 @@
 import React, { useState } from "react";
-import {
-  changePassword,
-  requestChangePasswordOtp,
-} from "../../services/AuthServices";
+import AuthServices from "../../services/AuthServices";
 import { toast } from "react-toastify";
 import "./ChangePassword.css";
 
@@ -63,7 +60,7 @@ const ChangePassword = ({ onCancel, onSuccess }) => {
     setLoading(true);
     try {
       // Gửi OTP
-      const result = await requestChangePasswordOtp();
+      const result = await AuthServices.requestChangePasswordOtp();
       toast.success(result.message || "OTP đã được gửi đến email của bạn!");
       setStep(2);
     } catch (error) {
@@ -88,12 +85,12 @@ const ChangePassword = ({ onCancel, onSuccess }) => {
 
     setLoading(true);
     try {
-      // Gửi theo ChangePasswordRequest DTO format
-      const result = await changePassword({
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword,
-        otp: formData.otp,
-      });
+      // Gọi AuthServices.changePassword
+      const result = await AuthServices.changePassword(
+        formData.currentPassword,
+        formData.newPassword,
+        formData.otp
+      );
 
       toast.success(result.message || "Đổi mật khẩu thành công!");
       onSuccess?.();

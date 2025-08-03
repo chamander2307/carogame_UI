@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import { useParams } from "react-router-dom";
 import { UserContext } from "../../context/UserContext";
-import { GameRoomService, GameWebSocketService } from "../../services";
+import GameRoomService from "../../services/GameRoomService";
+import GameWebSocketService from "../../services/GameWebSocketService";
 import { toast } from "react-toastify";
 import "./GameBoard.css";
 

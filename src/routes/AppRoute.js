@@ -7,9 +7,9 @@ import LoginPage from "../pages/auth/Login/Login";
 import RegisterPage from "../pages/auth/Register/Register";
 import ForgotPasswordPage from "../pages/auth/ForgotPassword/ForgotPassword";
 import ResetPasswordPage from "../pages/auth/ResetPassWord/ResetPassword";
-import LobbyPage from "../pages/lobby/lobby";
-import GamePage from "../pages/game/Game";
-import ProfilePage from "../pages/user/profile/Profile";
+import LobbyPage from "../pages/lobby/LobbyPage";
+import GamePage from "../pages/game/GamePage";
+import ProfilePage from "../pages/user/Profile/Profile";
 import HistoryPage from "../pages/history/History";
 import FriendsPage from "../pages/friends/Friend";
 

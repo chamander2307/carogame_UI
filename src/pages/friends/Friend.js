@@ -1,25 +1,29 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../../context/UserContext";
-import { FriendService } from "../../services";
+import {
+  getFriendsList,
+  getPendingFriendRequests,
+  getSentFriendRequests,
+  searchUsers,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+} from "../../services/FriendService";
+import { getFriendsOnlineStatus } from "../../services/OnlineStatusService";
 import { toast } from "react-toastify";
+import { getVietnameseMessage } from "../../constants/VietNameseStatus";
 import "./index.css";
 
 const FriendsPage = () => {
   const { user } = useContext(UserContext);
   const [activeTab, setActiveTab] = useState("friends");
   const [loading, setLoading] = useState(false);
-
-  // Friends state
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
-
-  // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-
-  // Online status state
   const [friendsOnlineStatus, setFriendsOnlineStatus] = useState([]);
 
   useEffect(() => {
@@ -34,13 +38,36 @@ const FriendsPage = () => {
   const loadFriends = async () => {
     try {
       setLoading(true);
-      const response = await FriendService.getFriends();
+      const response = await getFriendsList();
       if (response.success && response.data) {
         setFriends(response.data);
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Lấy danh sách bạn bè") ||
+            response.message ||
+            "Tải danh sách bạn bè thành công"
+        );
+      } else {
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Lấy danh sách bạn bè") ||
+            response.message ||
+            "Không thể tải danh sách bạn bè"
+        );
       }
     } catch (error) {
-      console.error("Failed to load friends:", error);
-      toast.error("Không thể tải danh sách bạn bè");
+      console.error("Failed to load friends:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy danh sách bạn bè"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể tải danh sách bạn bè"
+      );
     } finally {
       setLoading(false);
     }
@@ -48,35 +75,118 @@ const FriendsPage = () => {
 
   const loadFriendRequests = async () => {
     try {
-      const response = await FriendService.getFriendRequests();
+      const response = await getPendingFriendRequests();
       if (response.success && response.data) {
         setFriendRequests(response.data);
+        toast.success(
+          getVietnameseMessage(
+            response.statusCode,
+            "Lấy danh sách lời mời kết bạn"
+          ) ||
+            response.message ||
+            "Tải danh sách lời mời kết bạn thành công"
+        );
+      } else {
+        throw new Error(
+          getVietnameseMessage(
+            response.statusCode,
+            "Lấy danh sách lời mời kết bạn"
+          ) ||
+            response.message ||
+            "Không thể tải danh sách lời mời kết bạn"
+        );
       }
     } catch (error) {
-      console.error("Failed to load friend requests:", error);
+      console.error("Failed to load friend requests:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy danh sách lời mời kết bạn"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể tải danh sách lời mời kết bạn"
+      );
     }
   };
 
   const loadSentRequests = async () => {
     try {
-      const response = await FriendService.getSentRequests();
+      const response = await getSentFriendRequests();
       if (response.success && response.data) {
         setSentRequests(response.data);
+        toast.success(
+          getVietnameseMessage(
+            response.statusCode,
+            "Lấy danh sách lời mời đã gửi"
+          ) ||
+            response.message ||
+            "Tải danh sách lời mời đã gửi thành công"
+        );
+      } else {
+        throw new Error(
+          getVietnameseMessage(
+            response.statusCode,
+            "Lấy danh sách lời mời đã gửi"
+          ) ||
+            response.message ||
+            "Không thể tải danh sách lời mời đã gửi"
+        );
       }
     } catch (error) {
-      console.error("Failed to load sent requests:", error);
+      console.error("Failed to load sent requests:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy danh sách lời mời đã gửi"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể tải danh sách lời mời đã gửi"
+      );
     }
   };
 
-  // Load friends' online status (only working friend-related endpoint)
   const loadFriendsOnlineStatus = async () => {
     try {
-      const response = await FriendService.getFriendsOnlineStatus();
+      const response = await getFriendsOnlineStatus();
       if (response.success && response.data) {
         setFriendsOnlineStatus(response.data);
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Lấy trạng thái online") ||
+            response.message ||
+            "Tải trạng thái online của bạn bè thành công"
+        );
+      } else {
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Lấy trạng thái online") ||
+            response.message ||
+            "Không thể tải trạng thái online của bạn bè"
+        );
       }
     } catch (error) {
-      console.error("Failed to load friends online status:", error);
+      console.error("Failed to load friends online status:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy trạng thái online"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể tải trạng thái online của bạn bè"
+      );
     }
   };
 
@@ -88,17 +198,37 @@ const FriendsPage = () => {
 
     try {
       setIsSearching(true);
-      const response = await FriendService.searchUsers(searchQuery.trim());
+      const response = await searchUsers(searchQuery.trim());
       if (response.success && response.data) {
         setSearchResults(response.data);
-        toast.success(`Tìm thấy ${response.data.length} người dùng`);
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Tìm kiếm người dùng") ||
+            response.message ||
+            `Tìm thấy ${response.data.length} người dùng`
+        );
       } else {
         setSearchResults([]);
-        toast.info("Không tìm thấy người dùng nào");
+        toast.info(
+          getVietnameseMessage(response.statusCode, "Tìm kiếm người dùng") ||
+            response.message ||
+            "Không tìm thấy người dùng nào"
+        );
       }
     } catch (error) {
-      console.error("Search failed:", error);
-      toast.error("Không thể tìm kiếm người dùng");
+      console.error("Search failed:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Tìm kiếm người dùng"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể tìm kiếm người dùng"
+      );
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -107,84 +237,211 @@ const FriendsPage = () => {
 
   const handleSendFriendRequest = async (userId) => {
     try {
-      const response = await FriendService.sendFriendRequest(userId);
+      const response = await sendFriendRequest(userId);
       if (response.success) {
-        toast.success("Đã gửi lời mời kết bạn");
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Gửi lời mời kết bạn") ||
+            response.message ||
+            "Đã gửi lời mời kết bạn"
+        );
         loadSentRequests();
-        // Update search results to reflect sent request
         setSearchResults((prev) =>
           prev.map((user) =>
             user.id === userId ? { ...user, friendshipStatus: "PENDING" } : user
           )
         );
+      } else {
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Gửi lời mời kết bạn") ||
+            response.message ||
+            "Không thể gửi lời mời kết bạn"
+        );
       }
     } catch (error) {
-      console.error("Failed to send friend request:", error);
-      toast.error("Không thể gửi lời mời kết bạn");
+      console.error("Failed to send friend request:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Gửi lời mời kết bạn"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể gửi lời mời kết bạn"
+      );
     }
   };
 
-  const handleAcceptFriendRequest = async (requestId) => {
+  const handleAcceptFriendRequest = async (userId) => {
     try {
-      const response = await FriendService.acceptFriendRequest(requestId);
+      const response = await acceptFriendRequest(userId);
       if (response.success) {
-        toast.success("Đã chấp nhận lời mời kết bạn");
+        toast.success(
+          getVietnameseMessage(
+            response.statusCode,
+            "Chấp nhận lời mời kết bạn"
+          ) ||
+            response.message ||
+            "Đã chấp nhận lời mời kết bạn"
+        );
         loadFriends();
         loadFriendRequests();
         loadFriendsOnlineStatus();
+      } else {
+        throw new Error(
+          getVietnameseMessage(
+            response.statusCode,
+            "Chấp nhận lời mời kết bạn"
+          ) ||
+            response.message ||
+            "Không thể chấp nhận lời mời kết bạn"
+        );
       }
     } catch (error) {
-      console.error("Failed to accept friend request:", error);
-      toast.error("Không thể chấp nhận lời mời kết bạn");
+      console.error("Failed to accept friend request:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Chấp nhận lời mời kết bạn"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể chấp nhận lời mời kết bạn"
+      );
     }
   };
 
-  const handleRejectFriendRequest = async (requestId) => {
+  const handleRejectFriendRequest = async (userId) => {
     try {
-      const response = await FriendService.rejectFriendRequest(requestId);
+      const response = await rejectFriendRequest(userId);
       if (response.success) {
-        toast.success("Đã từ chối lời mời kết bạn");
+        toast.success(
+          getVietnameseMessage(
+            response.statusCode,
+            "Từ chối lời mời kết bạn"
+          ) ||
+            response.message ||
+            "Đã từ chối lời mời kết bạn"
+        );
         loadFriendRequests();
+      } else {
+        throw new Error(
+          getVietnameseMessage(
+            response.statusCode,
+            "Từ chối lời mời kết bạn"
+          ) ||
+            response.message ||
+            "Không thể từ chối lời mời kết bạn"
+        );
       }
     } catch (error) {
-      console.error("Failed to reject friend request:", error);
-      toast.error("Không thể từ chối lời mời kết bạn");
+      console.error("Failed to reject friend request:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Từ chối lời mời kết bạn"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể từ chối lời mời kết bạn"
+      );
     }
   };
 
-  const handleCancelSentRequest = async (requestId) => {
+  // TODO: Ideally, use dedicated APIs for canceling sent requests and removing friends
+  const handleCancelSentRequest = async (userId) => {
     try {
-      const response = await FriendService.rejectFriendRequest(requestId);
+      // Using rejectFriendRequest as a fallback; consider adding a dedicated cancelFriendRequest API
+      const response = await rejectFriendRequest(userId);
       if (response.success) {
-        toast.success("Đã hủy lời mời kết bạn");
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Hủy lời mời kết bạn") ||
+            response.message ||
+            "Đã hủy lời mời kết bạn"
+        );
         loadSentRequests();
+      } else {
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Hủy lời mời kết bạn") ||
+            response.message ||
+            "Không thể hủy lời mời kết bạn"
+        );
       }
     } catch (error) {
-      console.error("Failed to cancel friend request:", error);
-      toast.error("Không thể hủy lời mời kết bạn");
+      console.error("Failed to cancel friend request:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Hủy lời mời kết bạn"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể hủy lời mời kết bạn"
+      );
     }
   };
 
+  // TODO: Ideally, use a dedicated removeFriend API
   const handleRemoveFriend = async (friendId) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa bạn bè này?")) {
       try {
-        // Use reject endpoint to remove friend
-        const response = await FriendService.rejectFriendRequest(friendId);
+        // Using rejectFriendRequest as a fallback; consider adding a dedicated removeFriend API
+        const response = await rejectFriendRequest(friendId);
         if (response.success) {
-          toast.success("Đã xóa bạn bè");
+          toast.success(
+            getVietnameseMessage(response.statusCode, "Xóa bạn bè") ||
+              response.message ||
+              "Đã xóa bạn bè"
+          );
           loadFriends();
           loadFriendsOnlineStatus();
+        } else {
+          throw new Error(
+            getVietnameseMessage(response.statusCode, "Xóa bạn bè") ||
+              response.message ||
+              "Không thể xóa bạn bè"
+          );
         }
       } catch (error) {
-        console.error("Failed to remove friend:", error);
-        toast.error("Không thể xóa bạn bè");
+        console.error("Failed to remove friend:", {
+          message: error.message,
+          status: error.response?.status,
+          errorCode: error.response?.data?.errorCode,
+        });
+        toast.error(
+          getVietnameseMessage(
+            error.response?.data?.statusCode,
+            "Xóa bạn bè"
+          ) ||
+            error.response?.data?.message ||
+            error.message ||
+            "Không thể xóa bạn bè"
+        );
       }
     }
   };
 
   const refreshOnlineStatus = () => {
     loadFriendsOnlineStatus();
-    toast.info("Đã làm mới trạng thái online");
+    toast.info(
+      getVietnameseMessage(200, "Làm mới trạng thái online") ||
+        "Đã làm mới trạng thái online"
+    );
   };
 
   const getFriendshipButtonText = (user) => {
@@ -205,8 +462,7 @@ const FriendsPage = () => {
       targetUser.id !== user?.id &&
       targetUser.friendshipStatus !== "FRIENDS" &&
       targetUser.friendshipStatus !== "PENDING" &&
-      targetUser.friendshipStatus !== "BLOCKED" &&
-      targetUser.canSendRequest !== false
+      targetUser.friendshipStatus !== "BLOCKED"
     );
   };
 
@@ -214,30 +470,23 @@ const FriendsPage = () => {
     <div className="user-card">
       <div className="user-avatar">
         <img
-          src={user.avatar || "/default-avatar.png"}
+          src={user.avatarUrl || "/default-avatar.png"}
           alt={user.displayName || user.username}
           onError={(e) => {
             e.target.src = "/default-avatar.png";
           }}
         />
         <span
-          className={`status-indicator ${user.isOnline ? "online" : "offline"}`}
+          className={`status-indicator ${user.status ? "online" : "offline"}`}
         ></span>
       </div>
 
       <div className="user-info">
         <h4>{user.displayName || user.username}</h4>
         <p>@{user.username}</p>
-        <span className={`status-text ${user.isOnline ? "online" : "offline"}`}>
-          {user.isOnline ? "Đang online" : "Offline"}
+        <span className={`status-text ${user.status ? "online" : "offline"}`}>
+          {user.status ? "Đang online" : "Offline"}
         </span>
-        {user.relationshipStatus && (
-          <p className="relationship-status">
-            {user.relationshipStatus === "none" && "Chưa là bạn bè"}
-            {user.relationshipStatus === "friends" && "Đã là bạn bè"}
-            {user.relationshipStatus === "pending" && "Đang chờ phản hồi"}
-          </p>
-        )}
       </div>
 
       {showActions && (
@@ -255,13 +504,13 @@ const FriendsPage = () => {
             <>
               <button
                 className="btn-success"
-                onClick={() => handleAcceptFriendRequest(user.userId)}
+                onClick={() => handleAcceptFriendRequest(user.id)}
               >
                 Chấp nhận
               </button>
               <button
                 className="btn-danger"
-                onClick={() => handleRejectFriendRequest(user.userId)}
+                onClick={() => handleRejectFriendRequest(user.id)}
               >
                 Từ chối
               </button>
@@ -271,7 +520,7 @@ const FriendsPage = () => {
           {actionType === "cancel" && (
             <button
               className="btn-warning"
-              onClick={() => handleCancelSentRequest(user.userId)}
+              onClick={() => handleCancelSentRequest(user.id)}
             >
               Hủy lời mời
             </button>
@@ -279,10 +528,12 @@ const FriendsPage = () => {
 
           {actionType === "friend" && (
             <>
-              <button className="btn-secondary">Nhắn tin</button>
+              <button className="btn-secondary" disabled>
+                Nhắn tin
+              </button>
               <button
                 className="btn-danger"
-                onClick={() => handleRemoveFriend(user.userId)}
+                onClick={() => handleRemoveFriend(user.id)}
               >
                 Xóa bạn
               </button>
@@ -311,7 +562,6 @@ const FriendsPage = () => {
         <div className="friends-header">
           <h1>Bạn bè</h1>
 
-          {/* Search Section */}
           <div className="search-section">
             <div className="search-input-group">
               <input
@@ -344,7 +594,6 @@ const FriendsPage = () => {
           </div>
         </div>
 
-        {/* Tabs Navigation */}
         <div className="friends-tabs">
           <button
             className={`tab ${activeTab === "friends" ? "active" : ""}`}
@@ -382,7 +631,6 @@ const FriendsPage = () => {
           </button>
         </div>
 
-        {/* Tab Content */}
         <div className="friends-content">
           {loading ? (
             <div className="loading-container">
@@ -402,7 +650,7 @@ const FriendsPage = () => {
                     <div className="users-list">
                       {friends.map((friend) => (
                         <UserCard
-                          key={friend.userId}
+                          key={friend.id}
                           user={friend}
                           actionType="friend"
                         />
@@ -422,7 +670,7 @@ const FriendsPage = () => {
                     <div className="users-list">
                       {friendRequests.map((request) => (
                         <UserCard
-                          key={request.userId}
+                          key={request.id}
                           user={request}
                           actionType="accept"
                         />
@@ -442,7 +690,7 @@ const FriendsPage = () => {
                     <div className="users-list">
                       {sentRequests.map((request) => (
                         <UserCard
-                          key={request.userId}
+                          key={request.id}
                           user={request}
                           actionType="cancel"
                         />
@@ -466,11 +714,10 @@ const FriendsPage = () => {
                           key={friend.userId}
                           user={{
                             id: friend.userId,
-                            userId: friend.userId,
                             username: friend.displayName,
                             displayName: friend.displayName,
-                            avatar: friend.avatarUrl,
-                            isOnline: friend.status,
+                            avatarUrl: friend.avatarUrl,
+                            status: friend.status,
                           }}
                           actionType="online"
                         />

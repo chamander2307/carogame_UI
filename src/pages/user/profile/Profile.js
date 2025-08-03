@@ -1,9 +1,10 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { UserContext } from "../../../context/UserContext";
-import { updateProfile, updateAvatar } from "../../../services/ProfileServices";
-import { GameRoomService } from "../../../services";
+import UserProfileService from "../../../services/UserProfileService";
+import StatisticsService from "../../../services/StatisticsService";
 import ChangePassword from "../../../components/auth/ChangePassword";
 import { toast } from "react-toastify";
+import { getVietnameseMessage } from "../../../constants/VietNameseStatus";
 import "./index.css";
 
 const ProfilePage = () => {
@@ -22,12 +23,12 @@ const ProfilePage = () => {
   });
 
   const [stats, setStats] = useState({
-    gamesPlayed: 0,
-    gamesWon: 0,
-    gamesLost: 0,
-    gamesDraw: 0,
+    totalGamesPlayed: 0,
+    totalWins: 0,
+    totalLosses: 0,
+    totalDraws: 0,
     winRate: 0,
-    longestWinStreak: 0,
+    bestWinStreak: 0,
     favoriteOpponent: "N/A",
   });
 
@@ -39,34 +40,51 @@ const ProfilePage = () => {
         email: user.email || "",
       });
 
-      // Load user statistics from GameService
+      // Load user statistics from StatisticsService
       loadUserStats();
     }
   }, [user]);
 
   const loadUserStats = async () => {
     try {
-      // Since there's no getUserStats endpoint in backend, use user's room history as fallback
-      const response = await GameRoomService.getUserRooms();
+      const response = await StatisticsService.getUserStats();
       if (response.success && response.data) {
-        const rooms = response.data;
-        // Calculate basic stats from room data if available
-        const completedGames = rooms.filter(
-          (room) => room.status === "COMPLETED"
-        ).length;
         setStats({
-          gamesPlayed: completedGames,
-          gamesWon: 0, // Would need game results to calculate
-          gamesLost: 0,
-          gamesDraw: 0,
-          winRate: 0,
-          longestWinStreak: 0,
-          favoriteOpponent: "N/A",
+          totalGamesPlayed: response.data.totalGamesPlayed || 0,
+          totalWins: response.data.totalWins || 0,
+          totalLosses: response.data.totalLosses || 0,
+          totalDraws: response.data.totalDraws || 0,
+          winRate: response.data.winRate || 0,
+          bestWinStreak: response.data.bestWinStreak || 0,
+          favoriteOpponent: response.data.favoriteOpponent || "N/A",
         });
+        toast.success(
+          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
+            response.message ||
+            "Lấy thống kê người dùng thành công"
+        );
+      } else {
+        throw new Error(
+          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
+            response.message ||
+            "Không thể tải thống kê người dùng"
+        );
       }
     } catch (error) {
-      console.error("Failed to load user stats:", error);
-      // Keep default stats if loading fails
+      console.error("Failed to load user stats:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Lấy thống kê"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Không thể tải thống kê người dùng"
+      );
     }
   };
 
@@ -94,36 +112,72 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      // Validate form according to UpdateProfileRequest DTO
+      // Validate form based on typical backend constraints
       if (!formData.username.trim()) {
-        toast.error("Tên đăng nhập không được để trống");
+        toast.error(
+          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
+            "Tên đăng nhập không được để trống"
+        );
         return;
       }
-      if (formData.username.length < 3 || formData.username.length > 50) {
-        toast.error("Tên đăng nhập phải từ 3-50 ký tự");
+      if (formData.username.length < 3 || formData.username.length > 20) {
+        toast.error(
+          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
+            "Tên đăng nhập phải từ 3-20 ký tự"
+        );
         return;
       }
       if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        toast.error("Tên đăng nhập chỉ chứa chữ cái, số và dấu gạch dưới");
+        toast.error(
+          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
+            "Tên đăng nhập chỉ chứa chữ cái, số và dấu gạch dưới"
+        );
         return;
       }
       if (formData.displayName && formData.displayName.length > 50) {
-        toast.error("Tên hiển thị tối đa 50 ký tự");
+        toast.error(
+          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
+            "Tên hiển thị tối đa 50 ký tự"
+        );
         return;
       }
 
-      // Call updateProfile with UpdateProfileRequest DTO format
-      const result = await updateProfile({
+      // Update profile using UserProfileService
+      const result = await UserProfileService.updateProfile({
         username: formData.username.trim(),
         displayName: formData.displayName.trim() || null,
       });
 
-      toast.success(result.message || "Cập nhật thông tin thành công!");
-      await refreshUserProfile();
-      setIsEditing(false);
+      if (result.success) {
+        toast.success(
+          getVietnameseMessage(result.statusCode, "Cập nhật hồ sơ") ||
+            result.message ||
+            "Cập nhật thông tin thành công!"
+        );
+        await refreshUserProfile();
+        setIsEditing(false);
+      } else {
+        throw new Error(
+          getVietnameseMessage(result.statusCode, "Cập nhật hồ sơ") ||
+            result.message ||
+            "Cập nhật thông tin thất bại"
+        );
+      }
     } catch (error) {
-      console.error("Update profile error:", error);
-      toast.error(error.message || "Cập nhật thông tin thất bại");
+      console.error("Update profile error:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Cập nhật hồ sơ"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Cập nhật thông tin thất bại"
+      );
     } finally {
       setLoading(false);
     }
@@ -131,19 +185,45 @@ const ProfilePage = () => {
 
   const handleAvatarUpload = async () => {
     if (!selectedAvatar) {
-      toast.error("Vui lòng chọn ảnh trước");
+      toast.error(
+        getVietnameseMessage(400, "Tải lên avatar") || "Vui lòng chọn ảnh trước"
+      );
       return;
     }
 
     setAvatarLoading(true);
     try {
-      const result = await updateAvatar(selectedAvatar);
-      toast.success(result.message || "Cập nhật ảnh đại diện thành công!");
-      setSelectedAvatar(null);
-      await refreshUserProfile();
+      const result = await UserProfileService.uploadAvatar(selectedAvatar);
+      if (result.success) {
+        toast.success(
+          getVietnameseMessage(result.statusCode, "Tải lên avatar") ||
+            result.message ||
+            "Cập nhật ảnh đại diện thành công!"
+        );
+        setSelectedAvatar(null);
+        await refreshUserProfile();
+      } else {
+        throw new Error(
+          getVietnameseMessage(result.statusCode, "Tải lên avatar") ||
+            result.message ||
+            "Cập nhật ảnh đại diện thất bại"
+        );
+      }
     } catch (error) {
-      console.error("Upload avatar error:", error);
-      toast.error(error.message || "Cập nhật ảnh đại diện thất bại");
+      console.error("Upload avatar error:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
+      toast.error(
+        getVietnameseMessage(
+          error.response?.data?.statusCode,
+          "Tải lên avatar"
+        ) ||
+          error.response?.data?.message ||
+          error.message ||
+          "Cập nhật ảnh đại diện thất bại"
+      );
     } finally {
       setAvatarLoading(false);
     }
@@ -278,7 +358,6 @@ const ProfilePage = () => {
                       onChange={handleInputChange}
                       placeholder="Nhập tên hiển thị"
                       disabled={loading}
-                      required
                     />
                   </div>
                   <div className="form-group">
@@ -289,8 +368,7 @@ const ProfilePage = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="Nhập email"
-                      disabled={loading}
-                      required
+                      disabled
                     />
                   </div>
                   <div className="form-actions">
@@ -313,7 +391,6 @@ const ProfilePage = () => {
               )}
             </div>
 
-            {/* Password Change Section */}
             {isChangingPassword && (
               <ChangePassword
                 onSuccess={() => setIsChangingPassword(false)}
@@ -326,19 +403,19 @@ const ProfilePage = () => {
             <h2>Thống kê trò chơi</h2>
             <div className="stats-grid">
               <div className="stat-item">
-                <div className="stat-value">{stats.gamesPlayed}</div>
+                <div className="stat-value">{stats.totalGamesPlayed}</div>
                 <div className="stat-label">Trận đã chơi</div>
               </div>
               <div className="stat-item">
-                <div className="stat-value">{stats.gamesWon}</div>
+                <div className="stat-value">{stats.totalWins}</div>
                 <div className="stat-label">Trận thắng</div>
               </div>
               <div className="stat-item">
-                <div className="stat-value">{stats.gamesLost}</div>
+                <div className="stat-value">{stats.totalLosses}</div>
                 <div className="stat-label">Trận thua</div>
               </div>
               <div className="stat-item">
-                <div className="stat-value">{stats.gamesDraw}</div>
+                <div className="stat-value">{stats.totalDraws}</div>
                 <div className="stat-label">Trận hòa</div>
               </div>
               <div className="stat-item">
@@ -346,7 +423,7 @@ const ProfilePage = () => {
                 <div className="stat-label">Tỉ lệ thắng</div>
               </div>
               <div className="stat-item">
-                <div className="stat-value">{stats.longestWinStreak}</div>
+                <div className="stat-value">{stats.bestWinStreak}</div>
                 <div className="stat-label">Chuỗi thắng dài nhất</div>
               </div>
             </div>
@@ -361,7 +438,9 @@ const ProfilePage = () => {
                   <h4>Người mới</h4>
                   <p>Chơi trận đấu đầu tiên</p>
                 </div>
-                <div className="achievement-status completed">✓</div>
+                <div className="achievement-status completed">
+                  {stats.totalGamesPlayed > 0 ? "✓" : "Chưa đạt"}
+                </div>
               </div>
               <div className="achievement-item">
                 <div className="achievement-icon"></div>
@@ -369,7 +448,9 @@ const ProfilePage = () => {
                   <h4>Chuỗi thắng</h4>
                   <p>Thắng 5 trận liên tiếp</p>
                 </div>
-                <div className="achievement-status completed">✓</div>
+                <div className="achievement-status completed">
+                  {stats.bestWinStreak >= 5 ? "✓" : "Chưa đạt"}
+                </div>
               </div>
               <div className="achievement-item">
                 <div className="achievement-icon"></div>
@@ -377,7 +458,11 @@ const ProfilePage = () => {
                   <h4>Thế kỷ</h4>
                   <p>Chơi 100 trận đấu</p>
                 </div>
-                <div className="achievement-status pending">45/100</div>
+                <div className="achievement-status pending">
+                  {stats.totalGamesPlayed >= 100
+                    ? "✓"
+                    : `${stats.totalGamesPlayed}/100`}
+                </div>
               </div>
             </div>
           </div>
