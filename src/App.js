@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
@@ -9,17 +9,12 @@ import { UserProvider } from "./context/UserContext";
 
 // Components
 import Header from "./components/common/Header";
+import AppRoutes from "./routes/AppRoute";
 
-// Pages
-import HomePage from "./pages/home/index";
-import LoginPage from "./pages/auth/Login";
-import RegisterPage from "./pages/auth/Register";
-import ForgotPasswordPage from "./pages/auth/ForgotPassword";
-import ResetPasswordPage from "./pages/auth/ResetPassword";
-import LobbyPage from "./pages/lobby/index";
-import ProfilePage from "./pages/profile/index";
-import HistoryPage from "./pages/history/index";
-import FriendsPage from "./pages/friends/index";
+// Debug tools (chỉ trong development)
+if (process.env.NODE_ENV === "development") {
+  import("./utils/debugAuth");
+}
 
 function App() {
   return (
@@ -28,19 +23,20 @@ function App() {
         <div className="App">
           <Header />
           <main>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/lobby" element={<LobbyPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/friends" element={<FriendsPage />} />
-            </Routes>
+            <AppRoutes />
           </main>
-          <ToastContainer />
+          <ToastContainer
+            position="top-right"
+            autoClose={1500}
+            limit={1}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+          />
         </div>
       </Router>
     </UserProvider>

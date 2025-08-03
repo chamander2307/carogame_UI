@@ -52,32 +52,32 @@ const HomePage = () => {
           <h2 className="section-title">Tính năng nổi bật</h2>
           <div className="features-grid">
             <div className="feature-card">
-              <div className="feature-icon">🎮</div>
+              <div className="feature-icon"></div>
               <h3>Chơi Realtime</h3>
               <p>Đồng bộ nước đi tức thì, không bị lag hay delay</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">🏠</div>
+              <div className="feature-icon"></div>
               <h3>Phòng riêng tư</h3>
               <p>Tạo phòng chơi riêng với mã mời để chơi cùng bạn bè</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">👥</div>
+              <div className="feature-icon"></div>
               <h3>Nhiều người chơi</h3>
               <p>Tham gia phòng công khai hoặc mời bạn bè vào phòng</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">💬</div>
+              <div className="feature-icon"></div>
               <h3>Chat trong game</h3>
               <p>Trò chuyện với đối thủ trong khi chơi</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">📊</div>
+              <div className="feature-icon"></div>
               <h3>Lịch sử trận đấu</h3>
               <p>Xem lại các trận đã chơi và phân tích nước đi</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">🤝</div>
+              <div className="feature-icon"></div>
               <h3>Kết bạn</h3>
               <p>Thêm bạn bè và mời họ chơi cùng bất cứ lúc nào</p>
             </div>
@@ -92,21 +92,21 @@ const HomePage = () => {
           <div className="rules-content">
             <div className="rules-text">
               <div className="rule-item">
-                <h3>🎯 Mục tiêu</h3>
+                <h3>Mục tiêu</h3>
                 <p>
                   Tạo ra một đường thẳng 5 quân cờ liên tiếp theo hàng ngang,
                   hàng dọc hoặc đường chéo
                 </p>
               </div>
               <div className="rule-item">
-                <h3>⚫ Luật chơi</h3>
+                <h3>Luật chơi</h3>
                 <p>
                   Người chơi đầu tiên sử dụng quân đen, người thứ hai sử dụng
                   quân trắng. Lần lượt đặt quân trên bàn cờ 15x15
                 </p>
               </div>
               <div className="rule-item">
-                <h3>🏆 Thắng thua</h3>
+                <h3>Thắng thua</h3>
                 <p>
                   Người đầu tiên tạo ra đường 5 quân liên tiếp sẽ thắng. Nếu bàn
                   cờ đầy mà không ai thắng thì hòa

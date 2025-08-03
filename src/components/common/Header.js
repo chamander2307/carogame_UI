@@ -41,6 +41,9 @@ const Header = () => {
             <Link to="/lobby" className="nav-item">
               Phòng chơi
             </Link>
+            <Link to="/game" className="nav-item">
+              Chơi ngay
+            </Link>
             <Link to="/players" className="nav-item">
               Người chơi
             </Link>
