@@ -1,4 +1,5 @@
 const StatusCodeMessages = {
+  // Standard HTTP status codes
   200: "Thành công",
   201: "Tạo mới thành công",
   400: "Yêu cầu không hợp lệ",
@@ -27,9 +28,11 @@ const StatusCodeMessages = {
   5001: "Lỗi chuyển đổi hình ảnh",
   5002: "Lỗi khi lưu file",
   5003: "Tải file lên thất bại",
+  5004: "Kích thước file vượt quá giới hạn cho phép",
+  5005: "Loại file không hợp lệ",
 
   // Email errors
-  5004: "Gửi email thất bại",
+  5006: "Gửi email thất bại",
 };
 
 export default StatusCodeMessages;

@@ -1,7 +1,33 @@
 import instance from "../config/axios";
-import { jwtDecode } from "jwt-decode";
 import { getVietnameseMessage } from "../constants/VietNameseStatus";
-import { toast } from "react-toastify";
+
+//hàm chạy local
+export const getCurrentUser = () => {
+  try {
+    const userStr = localStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (error) {
+    console.error("Error parsing user data:", error);
+    return null;
+  }
+};
+
+export const isAuthenticated = () => {
+  const token = localStorage.getItem("accessToken");
+  const user = getCurrentUser();
+  return !!(token && user);
+};
+
+export const getAuthHeader = () => {
+  const token = localStorage.getItem("accessToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+export const clearAuthData = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+};
 
 export const refreshToken = async () => {
   try {
@@ -40,12 +66,54 @@ export const refreshToken = async () => {
 
 export const register = async (userData) => {
   try {
-    const response = await instance.post("/auth/register", {
-      username: userData.username,
-      email: userData.email,
-      displayName: userData.displayName,
-      password: userData.password,
-    });
+    // Validate theo UserCreation DTO
+    if (!userData.username || userData.username.trim().length === 0) {
+      throw new Error("Username is required");
+    }
+    if (!userData.email || userData.email.trim().length === 0) {
+      throw new Error("Email is required");
+    }
+    if (!userData.password || userData.password.trim().length === 0) {
+      throw new Error("Password is required");
+    }
+
+    const username = userData.username.trim();
+    if (username.length < 3 || username.length > 50) {
+      throw new Error("Username must be between 3 and 50 characters");
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      throw new Error(
+        "Username can only contain letters, numbers and underscores"
+      );
+    }
+
+    const password = userData.password.trim();
+    if (password.length < 8 || password.length > 30) {
+      throw new Error("Password must be between 8 and 30 characters");
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      throw new Error(
+        "Password must contain at least one lowercase letter, one uppercase letter, and one digit"
+      );
+    }
+
+    const email = userData.email.trim();
+    if (email.length > 254) {
+      throw new Error("Email cannot exceed 254 characters");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Email format is invalid");
+    }
+
+    // Format theo UserCreation DTO
+    const requestData = {
+      username: username,
+      email: email,
+      displayName: userData.displayName ? userData.displayName.trim() : null,
+      password: password,
+    };
+
+    const response = await instance.post("/auth/register", requestData);
     const data = response.data;
     if (data?.statusCode === 201) {
       return {
@@ -136,11 +204,48 @@ export const forgotPassword = async (email) => {
 
 export const resetPassword = async (resetData) => {
   try {
-    const response = await instance.post("/auth/reset-password", {
-      email: resetData.email,
-      otp: resetData.otp,
-      newPassword: resetData.newPassword,
-    });
+    // Validate theo ResetPasswordRequest DTO
+    if (!resetData.otp || resetData.otp.trim().length === 0) {
+      throw new Error("OTP is required");
+    }
+    if (!resetData.email || resetData.email.trim().length === 0) {
+      throw new Error("Email is required");
+    }
+    if (!resetData.newPassword || resetData.newPassword.trim().length === 0) {
+      throw new Error("New password is required");
+    }
+
+    const otp = resetData.otp.trim();
+    if (!/^\d{6}$/.test(otp)) {
+      throw new Error("OTP must be exactly 6 digits");
+    }
+
+    const email = resetData.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Email format is invalid");
+    }
+    if (email.length > 254) {
+      throw new Error("Email cannot exceed 254 characters");
+    }
+
+    const newPassword = resetData.newPassword.trim();
+    if (newPassword.length < 8 || newPassword.length > 30) {
+      throw new Error("Password must be between 8 and 30 characters");
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      throw new Error(
+        "Password must contain at least one lowercase letter, one uppercase letter, and one digit"
+      );
+    }
+
+    // Format theo ResetPasswordRequest DTO
+    const requestData = {
+      otp: otp,
+      email: email,
+      newPassword: newPassword,
+    };
+
+    const response = await instance.post("/auth/reset-password", requestData);
     const data = response.data;
     if (data?.success) {
       return {
@@ -211,29 +316,20 @@ export const changePassword = async (changeData) => {
   }
 };
 
-export const getCurrentUser = () => {
-  try {
-    const userStr = localStorage.getItem("user");
-    return userStr ? JSON.parse(userStr) : null;
-  } catch (error) {
-    console.error("Error parsing user data:", error);
-    return null;
-  }
+// Default export with all auth functions
+const AuthService = {
+  getCurrentUser,
+  login,
+  register,
+  logout,
+  refreshToken,
+  isAuthenticated,
+  getAuthHeader,
+  clearAuthData,
+  forgotPassword,
+  resetPassword,
+  requestChangePasswordOtp,
+  changePassword,
 };
 
-export const isAuthenticated = () => {
-  const token = localStorage.getItem("accessToken");
-  const user = getCurrentUser();
-  return !!(token && user);
-};
-
-export const getAuthHeader = () => {
-  const token = localStorage.getItem("accessToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-export const clearAuthData = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-};
+export default AuthService;
