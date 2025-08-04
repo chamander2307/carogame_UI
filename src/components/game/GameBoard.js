@@ -506,7 +506,12 @@ const GameBoard = () => {
                       : "other-message"
                   }`}
                 >
-                  <div className="message-sender">{message.senderName}</div>
+                  <div className="message-sender">
+                    {typeof message.senderName === 'string' 
+                      ? message.senderName 
+                      : message.senderName?.username || message.senderName?.displayName || 'Unknown'
+                    }
+                  </div>
                   <div className="message-content">{message.content}</div>
                   <div className="message-time">
                     {new Date(message.timestamp).toLocaleTimeString()}

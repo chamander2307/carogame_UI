@@ -185,7 +185,10 @@ const GameChat = memo(
               <div className="message-avatar">
                 <img
                   src={message.senderAvatar || "/default-avatar.png"}
-                  alt={message.senderName}
+                  alt={typeof message.senderName === 'string' 
+                    ? message.senderName 
+                    : message.senderName?.username || message.senderName?.displayName || 'User'
+                  }
                   className="avatar-image"
                   onError={(e) => {
                     e.target.src = "/default-avatar.png";
@@ -197,7 +200,12 @@ const GameChat = memo(
             <div className="message-content">
               {/* Sender name (only show for first message in group from others) */}
               {!isMe && isFirstInGroup && (
-                <div className="message-sender">{message.senderName}</div>
+                <div className="message-sender">
+                  {typeof message.senderName === 'string' 
+                    ? message.senderName 
+                    : message.senderName?.username || message.senderName?.displayName || 'Unknown'
+                  }
+                </div>
               )}
 
               {/* Message bubble */}

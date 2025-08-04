@@ -316,13 +316,29 @@ export const subscribeToGameMoves = async (roomId, onMessageReceived) => {
     const subscription = stompClient.subscribe(
       `/topic/game/${roomId}/move`,
       (message) => {
-        const data = JSON.parse(message.body);
-        console.log("Game move received:", data);
-        onMessageReceived(data);
+        console.log("=== GAME MOVE MESSAGE RECEIVED ===");
+        console.log("Raw message body:", message.body);
+        console.log("Message headers:", message.headers);
+        console.log("Subscription topic:", `/topic/game/${roomId}/move`);
+        
+        try {
+          const data = JSON.parse(message.body);
+          console.log("Parsed game move data:", JSON.stringify(data, null, 2));
+          console.log("Move data keys:", Object.keys(data));
+          console.log("Calling onMessageReceived with:", data);
+          onMessageReceived(data);
+          console.log("onMessageReceived called successfully");
+        } catch (error) {
+          console.error("Error parsing game move message:", error);
+          console.error("Raw message was:", message.body);
+        }
+        
+        console.log("=== END GAME MOVE MESSAGE ===");
       }
     );
 
-    console.log(`Subscribed to game ${roomId} moves`);
+    console.log(`Successfully subscribed to game ${roomId} moves via /topic/game/${roomId}/move`);
+    console.log("Game move subscription object:", subscription);
     return subscription;
   } catch (error) {
     handleWebSocketError(error, "Game move subscription failed");
@@ -516,9 +532,19 @@ export const makeGameMoveWS = async (roomId, moveData) => {
 
     // Ensure correct data format for backend
     const formattedMoveData = {
-      xPosition: moveData.xPosition,
-      yPosition: moveData.yPosition,
+      xPosition: parseInt(moveData.xPosition, 10),
+      yPosition: parseInt(moveData.yPosition, 10),
     };
+    
+    // Validate move data
+    if (isNaN(formattedMoveData.xPosition) || isNaN(formattedMoveData.yPosition)) {
+      throw new Error(`Invalid move coordinates: xPosition=${moveData.xPosition}, yPosition=${moveData.yPosition}`);
+    }
+    
+    if (formattedMoveData.xPosition < 0 || formattedMoveData.xPosition >= 15 || 
+        formattedMoveData.yPosition < 0 || formattedMoveData.yPosition >= 15) {
+      throw new Error(`Move coordinates out of bounds: (${formattedMoveData.xPosition}, ${formattedMoveData.yPosition})`);
+    }
 
     // Ensure roomId is a number for backend compatibility
     const numericRoomId = parseInt(roomId, 10);
@@ -545,6 +571,7 @@ export const makeGameMoveWS = async (roomId, moveData) => {
     console.error("Error details:", error);
     console.error("========================");
     handleWebSocketError(error, "WebSocket game move failed");
+    throw error; // Re-throw để GameActionService có thể handle
   }
 };
 

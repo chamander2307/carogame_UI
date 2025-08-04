@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import "./GameBoardGrid.css";
 
 const BOARD_SIZE = 15;
@@ -10,7 +10,7 @@ const PLAYER_X = 1;
  * Game Board Grid Component
  * Optimized for performance with React.memo and useMemo
  */
-const GameBoardGrid = memo(
+const GameBoardGrid = (
   ({
     board,
     onCellClick,
