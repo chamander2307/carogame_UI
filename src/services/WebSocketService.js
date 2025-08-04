@@ -1,104 +1,377 @@
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { toast } from "react-toastify";
+
 let stompClient = null;
+let isConnecting = false;
+let isConnected = false;
 
 const handleWebSocketError = (
   error,
-  defaultMessage = "Có lỗi WebSocket xảy ra, vui lòng thử lại"
+  defaultMessage = "WebSocket error occurred, please try again"
 ) => {
   const errorMessage = error.message || defaultMessage;
-  toast.error(errorMessage);
+  console.error("WebSocket Error:", errorMessage);
   throw new Error(errorMessage);
 };
 
-const connectWebSocket = (onMessageReceived, onError) => {
+// Test WebSocket endpoints to find the correct one - Enhanced from HTML logic
+export const testWebSocketEndpoints = async () => {
   const accessToken = localStorage.getItem("accessToken");
+
   if (!accessToken) {
-    handleWebSocketError(
-      new Error("Không tìm thấy access token"),
-      "Vui lòng đăng nhập lại"
-    );
-    return;
+    console.log("No access token found");
+    return null;
   }
 
-  const socket = new SockJS("/ws");
-  stompClient = new Client({
-    webSocketFactory: () => socket,
-    connectHeaders: { Authorization: `Bearer ${accessToken}` },
-    onConnect: () => {
-      console.log("WebSocket connected");
-    },
-    onStompError: (frame) => {
-      onError?.(frame);
-      handleWebSocketError(new Error(frame.body), "Lỗi kết nối WebSocket");
-    },
-  });
+  console.log("Testing WebSocket endpoints...");
 
-  stompClient.activate();
+  // Test 1: Check if server is running
+  try {
+    console.log("Testing server health...");
+    const healthResponse = await fetch(
+      "http://localhost:8080/actuator/health",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (healthResponse.ok) {
+      console.log("Server is running and healthy");
+    } else {
+      console.log("Server responded but not healthy:", healthResponse.status);
+    }
+  } catch (error) {
+    console.log("Server health check failed:", error.message);
+    console.log(
+      "Server might not be running. Please start the Spring Boot application."
+    );
+    return null;
+  }
+
+  // Test 2: Check SockJS info endpoint
+  try {
+    console.log("Testing SockJS info endpoint...");
+    const sockjsResponse = await fetch("http://localhost:8080/ws-sockjs/info", {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (sockjsResponse.ok) {
+      const info = await sockjsResponse.json();
+      console.log("SockJS endpoint is available:", info);
+      return "http://localhost:8080/ws-sockjs";
+    } else {
+      console.log("SockJS info endpoint failed:", sockjsResponse.status);
+    }
+  } catch (error) {
+    console.log("SockJS info endpoint error:", error.message);
+  }
+
+  // Test 3: Check WebSocket endpoint with actual connection
+  try {
+    console.log("Testing direct WebSocket connection...");
+    const wsUrl = `ws://localhost:8080/ws?token=Bearer ${encodeURIComponent(
+      accessToken
+    )}`;
+
+    // Create WebSocket test connection
+    return new Promise((resolve) => {
+      const testWs = new WebSocket(wsUrl);
+
+      const timeout = setTimeout(() => {
+        testWs.close();
+        console.log("WebSocket test connection timeout");
+        resolve(null);
+      }, 5000);
+
+      testWs.onopen = () => {
+        clearTimeout(timeout);
+        testWs.close();
+        console.log("Direct WebSocket endpoint is working");
+        resolve("ws://localhost:8080/ws");
+      };
+
+      testWs.onerror = (error) => {
+        clearTimeout(timeout);
+        console.log("Direct WebSocket test failed:", error);
+        resolve(null);
+      };
+    });
+  } catch (error) {
+    console.log("WebSocket test error:", error.message);
+  }
+
+  console.log("No working WebSocket endpoints found");
+  return null;
+};
+
+// Initialize WebSocket connection - Enhanced from HTML logic
+export const initializeWebSocket = () => {
+  return new Promise((resolve, reject) => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      const error = new Error("Access token not found. Please login again!");
+      reject(error);
+      return;
+    }
+
+    if (isConnected && stompClient?.connected) {
+      resolve(stompClient);
+      return;
+    }
+
+    if (isConnecting) {
+      // Wait for current connection attempt
+      const checkConnection = setInterval(() => {
+        if (isConnected && stompClient?.connected) {
+          clearInterval(checkConnection);
+          resolve(stompClient);
+        } else if (!isConnecting) {
+          clearInterval(checkConnection);
+          reject(new Error("Connection failed"));
+        }
+      }, 100);
+      return;
+    }
+
+    isConnecting = true;
+
+    try {
+      // Spring Boot WebSocket endpoint with JWT token
+      const wsUrl = `ws://localhost:8080/ws?token=Bearer ${encodeURIComponent(
+        accessToken
+      )}`;
+      console.log(
+        "Connecting to WebSocket with token:",
+        wsUrl.substring(0, 50) + "..."
+      );
+
+      stompClient = new Client({
+        brokerURL: wsUrl,
+        // No connectHeaders needed as token is sent via URL
+        onConnect: (frame) => {
+          console.log("WebSocket connected successfully!", frame);
+          isConnected = true;
+          isConnecting = false;
+          resolve(stompClient);
+        },
+        onStompError: (frame) => {
+          console.error("STOMP Error:", frame);
+          isConnected = false;
+          isConnecting = false;
+          // Try fallback with SockJS
+          console.log("Trying SockJS fallback...");
+          tryInitializeWithSockJS(accessToken).then(resolve).catch(reject);
+        },
+        onWebSocketError: (error) => {
+          console.error("WebSocket Error:", error);
+          isConnected = false;
+          isConnecting = false;
+          // Try fallback with SockJS
+          console.log("Trying SockJS fallback...");
+          tryInitializeWithSockJS(accessToken).then(resolve).catch(reject);
+        },
+        onDisconnect: () => {
+          console.log("WebSocket disconnected");
+          isConnected = false;
+          isConnecting = false;
+        },
+        debug: (str) => {
+          console.log("WebSocket Debug:", str);
+        },
+      });
+
+      stompClient.activate();
+    } catch (error) {
+      isConnecting = false;
+      console.error("Failed to initialize WebSocket:", error);
+      // Try fallback with SockJS
+      console.log("Trying SockJS fallback...");
+      tryInitializeWithSockJS(accessToken).then(resolve).catch(reject);
+    }
+  });
+};
+
+// Enhanced SockJS fallback function from HTML logic
+const tryInitializeWithSockJS = (accessToken) => {
+  return new Promise((resolve, reject) => {
+    try {
+      // SockJS endpoint with token parameter
+      const sockjsUrl = `http://localhost:8080/ws-sockjs?token=Bearer ${encodeURIComponent(
+        accessToken
+      )}`;
+      console.log("Connecting to SockJS:", sockjsUrl.substring(0, 50) + "...");
+
+      const socket = new SockJS(sockjsUrl);
+
+      stompClient = new Client({
+        webSocketFactory: () => socket,
+        onConnect: (frame) => {
+          console.log("SockJS connected successfully!", frame);
+          isConnected = true;
+          isConnecting = false;
+          resolve(stompClient);
+        },
+        onStompError: (frame) => {
+          console.error("SockJS STOMP Error:", frame);
+          isConnected = false;
+          isConnecting = false;
+          const error = new Error(
+            `SockJS STOMP Error: ${frame.body || "Connection failed"}`
+          );
+          reject(error);
+        },
+        onWebSocketError: (error) => {
+          console.error("SockJS WebSocket Error:", error);
+          isConnected = false;
+          isConnecting = false;
+          reject(error);
+        },
+        onDisconnect: () => {
+          console.log("SockJS disconnected");
+          isConnected = false;
+          isConnecting = false;
+        },
+        debug: (str) => {
+          console.log("SockJS Debug:", str);
+        },
+      });
+
+      stompClient.activate();
+    } catch (error) {
+      isConnecting = false;
+      console.error("Failed to initialize SockJS:", error);
+      reject(error);
+    }
+  });
+};
+
+// Check if WebSocket is connected
+export const isWebSocketConnected = () => {
+  return isConnected && stompClient?.connected;
 };
 
 // Subscribe to Room Updates
-export const subscribeToRoomUpdates = (roomId, onMessageReceived) => {
+export const subscribeToRoomUpdates = async (roomId, onMessageReceived) => {
   try {
-    if (!stompClient || !stompClient.connected) {
-      connectWebSocket(onMessageReceived, (error) =>
-        handleWebSocketError(error)
-      );
+    if (!isWebSocketConnected()) {
+      await initializeWebSocket();
     }
-    stompClient.subscribe(`/topic/room/${roomId}/updates`, (message) => {
-      onMessageReceived(JSON.parse(message.body));
-    });
+
+    // CORRECT: Backend broadcasts to /topic/room/{roomId}/updates
+    const subscription = stompClient.subscribe(
+      `/topic/room/${roomId}/updates`,
+      (message) => {
+        console.log("=== WEBSOCKET MESSAGE RECEIVED ===");
+        console.log("Raw message body:", message.body);
+        console.log("Message headers:", message.headers);
+
+        try {
+          const data = JSON.parse(message.body);
+          console.log("Parsed data:", JSON.stringify(data, null, 2));
+          console.log("Update type:", data.updateType);
+          console.log("Game state:", data.gameState);
+
+          if (data.updateType === "GAME_STARTED") {
+            console.log("GAME_STARTED MESSAGE DETECTED!");
+            console.log("Game state in message:", data.gameState);
+          }
+
+          console.log("Calling onMessageReceived with:", data);
+          onMessageReceived(data);
+          console.log("onMessageReceived called successfully");
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+          console.error("Raw message was:", message.body);
+        }
+
+        console.log("=== END WEBSOCKET MESSAGE ===");
+      }
+    );
+
+    console.log(
+      `Successfully subscribed to room ${roomId} updates via /topic/room/${roomId}/updates`
+    );
+    console.log("Subscription object:", subscription);
+    console.log("STOMP client connected:", stompClient.connected);
+    console.log("STOMP client state:", stompClient.state);
+    return subscription;
   } catch (error) {
-    handleWebSocketError(error, "Đăng ký cập nhật phòng thất bại");
+    handleWebSocketError(error, "Room update subscription failed");
   }
 };
 
 // Subscribe to Game Moves
-export const subscribeToGameMoves = (roomId, onMessageReceived) => {
+export const subscribeToGameMoves = async (roomId, onMessageReceived) => {
   try {
-    if (!stompClient || !stompClient.connected) {
-      connectWebSocket(onMessageReceived, (error) =>
-        handleWebSocketError(error)
-      );
+    if (!isWebSocketConnected()) {
+      await initializeWebSocket();
     }
-    stompClient.subscribe(`/topic/game/${roomId}/move`, (message) => {
-      onMessageReceived(JSON.parse(message.body));
-    });
+
+    const subscription = stompClient.subscribe(
+      `/topic/game/${roomId}/move`,
+      (message) => {
+        const data = JSON.parse(message.body);
+        console.log("Game move received:", data);
+        onMessageReceived(data);
+      }
+    );
+
+    console.log(`Subscribed to game ${roomId} moves`);
+    return subscription;
   } catch (error) {
-    handleWebSocketError(error, "Đăng ký cập nhật nước đi thất bại");
+    handleWebSocketError(error, "Game move subscription failed");
   }
 };
 
 // Subscribe to Game End
-export const subscribeToGameEnd = (roomId, onMessageReceived) => {
+export const subscribeToGameEnd = async (roomId, onMessageReceived) => {
   try {
-    if (!stompClient || !stompClient.connected) {
-      connectWebSocket(onMessageReceived, (error) =>
-        handleWebSocketError(error)
-      );
+    if (!isWebSocketConnected()) {
+      await initializeWebSocket();
     }
-    stompClient.subscribe(`/topic/game/${roomId}/end`, (message) => {
-      onMessageReceived(JSON.parse(message.body));
-    });
+
+    const subscription = stompClient.subscribe(
+      `/topic/game/${roomId}/end`,
+      (message) => {
+        const data = JSON.parse(message.body);
+        console.log("Game end received:", data);
+        onMessageReceived(data);
+      }
+    );
+
+    console.log(`Subscribed to game ${roomId} end`);
+    return subscription;
   } catch (error) {
-    handleWebSocketError(error, "Đăng ký cập nhật kết thúc game thất bại");
+    handleWebSocketError(error, "Game end subscription failed");
   }
 };
 
 // Subscribe to Room Chat
-export const subscribeToRoomChat = (roomId, onMessageReceived) => {
+export const subscribeToRoomChat = async (roomId, onMessageReceived) => {
   try {
-    if (!stompClient || !stompClient.connected) {
-      connectWebSocket(onMessageReceived, (error) =>
-        handleWebSocketError(error)
-      );
+    if (!isWebSocketConnected()) {
+      await initializeWebSocket();
     }
-    stompClient.subscribe(`/topic/room/${roomId}/chat`, (message) => {
-      onMessageReceived(JSON.parse(message.body));
-    });
+
+    const subscription = stompClient.subscribe(
+      `/topic/room/${roomId}/chat`,
+      (message) => {
+        const data = JSON.parse(message.body);
+        console.log("Chat message received:", data);
+        onMessageReceived(data);
+      }
+    );
+
+    console.log(`Subscribed to room ${roomId} chat`);
+    return subscription;
   } catch (error) {
-    handleWebSocketError(error, "Đăng ký cập nhật trò chuyện thất bại");
+    handleWebSocketError(error, "Chat subscription failed");
   }
 };
 
@@ -106,14 +379,14 @@ export const subscribeToRoomChat = (roomId, onMessageReceived) => {
 export const sendChatMessage = async (roomId, messageData) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({
       destination: `/app/room/${roomId}/chat`,
       body: JSON.stringify(messageData),
     });
   } catch (error) {
-    handleWebSocketError(error, "Gửi tin nhắn trò chuyện thất bại");
+    handleWebSocketError(error, "Chat message sending failed");
   }
 };
 
@@ -121,11 +394,11 @@ export const sendChatMessage = async (roomId, messageData) => {
 export const joinRoomWS = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/join` });
   } catch (error) {
-    handleWebSocketError(error, "Tham gia phòng qua WebSocket thất bại");
+    handleWebSocketError(error, "Room join via WebSocket failed");
   }
 };
 
@@ -133,11 +406,11 @@ export const joinRoomWS = async (roomId) => {
 export const leaveRoomWS = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/leave` });
   } catch (error) {
-    handleWebSocketError(error, "Rời phòng qua WebSocket thất bại");
+    handleWebSocketError(error, "Room leave via WebSocket failed");
   }
 };
 
@@ -145,11 +418,11 @@ export const leaveRoomWS = async (roomId) => {
 export const markPlayerReady = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/ready` });
   } catch (error) {
-    handleWebSocketError(error, "Đánh dấu sẵn sàng thất bại");
+    handleWebSocketError(error, "Mark player ready failed");
   }
 };
 
@@ -157,11 +430,11 @@ export const markPlayerReady = async (roomId) => {
 export const startGame = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/start` });
   } catch (error) {
-    handleWebSocketError(error, "Bắt đầu game thất bại");
+    handleWebSocketError(error, "Start game failed");
   }
 };
 
@@ -169,11 +442,11 @@ export const startGame = async (roomId) => {
 export const getRoomStatus = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/status` });
   } catch (error) {
-    handleWebSocketError(error, "Lấy trạng thái phòng thất bại");
+    handleWebSocketError(error, "Get room status failed");
   }
 };
 
@@ -181,11 +454,11 @@ export const getRoomStatus = async (roomId) => {
 export const surrenderGame = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/surrender` });
   } catch (error) {
-    handleWebSocketError(error, "Đầu hàng thất bại");
+    handleWebSocketError(error, "Surrender game failed");
   }
 };
 
@@ -193,11 +466,11 @@ export const surrenderGame = async (roomId) => {
 export const requestRematch = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/rematch/request` });
   } catch (error) {
-    handleWebSocketError(error, "Yêu cầu tái đấu thất bại");
+    handleWebSocketError(error, "Request rematch failed");
   }
 };
 
@@ -205,11 +478,11 @@ export const requestRematch = async (roomId) => {
 export const acceptRematch = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/room/${roomId}/rematch/accept` });
   } catch (error) {
-    handleWebSocketError(error, "Chấp nhận tái đấu thất bại");
+    handleWebSocketError(error, "Accept rematch failed");
   }
 };
 
@@ -217,29 +490,61 @@ export const acceptRematch = async (roomId) => {
 export const completeGame = async (roomId, gameResult) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({
       destination: `/app/room/${roomId}/complete`,
       body: JSON.stringify(gameResult),
     });
   } catch (error) {
-    handleWebSocketError(error, "Kết thúc game thất bại");
+    handleWebSocketError(error, "Complete game failed");
   }
 };
 
-// Make Game Move via WebSocket
+// Make Game Move via WebSocket - Fixed to send correct data format with detailed logging
 export const makeGameMoveWS = async (roomId, moveData) => {
   try {
+    console.log("=== WebSocket MOVE DEBUG ===");
+    console.log("Room ID (raw):", roomId, "Type:", typeof roomId);
+    console.log("Input moveData:", moveData);
+    console.log("STOMP client connected:", stompClient?.connected);
+    console.log("STOMP client state:", stompClient?.state);
+
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
+
+    // Ensure correct data format for backend
+    const formattedMoveData = {
+      xPosition: moveData.xPosition,
+      yPosition: moveData.yPosition,
+    };
+
+    // Ensure roomId is a number for backend compatibility
+    const numericRoomId = parseInt(roomId, 10);
+    if (isNaN(numericRoomId)) {
+      throw new Error(`Invalid room ID: ${roomId}`);
+    }
+
+    console.log("Formatted move data for backend:", formattedMoveData);
+    console.log("Numeric room ID:", numericRoomId);
+    console.log("Destination:", `/app/game/${numericRoomId}/move`);
+
+    const messageBody = JSON.stringify(formattedMoveData);
+    console.log("Message body to send:", messageBody);
+
     stompClient.publish({
-      destination: `/app/game/${roomId}/move`,
-      body: JSON.stringify(moveData),
+      destination: `/app/game/${numericRoomId}/move`,
+      body: messageBody,
     });
+
+    console.log("WebSocket message sent successfully!");
+    console.log("=========================");
   } catch (error) {
-    handleWebSocketError(error, "Thực hiện nước đi qua WebSocket thất bại");
+    console.error("=== WebSocket MOVE ERROR ===");
+    console.error("Error details:", error);
+    console.error("========================");
+    handleWebSocketError(error, "WebSocket game move failed");
   }
 };
 
@@ -247,10 +552,10 @@ export const makeGameMoveWS = async (roomId, moveData) => {
 export const getBoardStateWS = async (roomId) => {
   try {
     if (!stompClient || !stompClient.connected) {
-      throw new Error("WebSocket chưa được kết nối");
+      throw new Error("WebSocket not connected");
     }
     stompClient.publish({ destination: `/app/game/${roomId}/board` });
   } catch (error) {
-    handleWebSocketError(error, "Lấy trạng thái bàn cờ qua WebSocket thất bại");
+    handleWebSocketError(error, "WebSocket board state request failed");
   }
 };

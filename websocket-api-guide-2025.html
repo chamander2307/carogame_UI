@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔌 WebSocket API Documentation - Caro Game 2025</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 2px,
+                rgba(255,255,255,0.05) 2px,
+                rgba(255,255,255,0.05) 4px
+            );
+            animation: slide 20s linear infinite;
+        }
+
+        @keyframes slide {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .toc {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+
+        .toc h2 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 10px;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: white;
+            border: 1px solid #e0e0e0;
+        }
+
+        .toc a:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .connection-info {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .connection-info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transform: translate(30px, -30px);
+        }
+
+        .connection-info h2 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .connection-info code {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            display: block;
+            margin: 10px 0;
+            backdrop-filter: blur(5px);
+        }
+
+        .section {
+            margin: 40px 0;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.8rem;
+        }
+
+        .endpoint {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin: 25px 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .endpoint:hover {
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+            transform: translateY(-3px);
+        }
+
+        .endpoint-header {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            position: relative;
+        }
+
+        .endpoint-header h3 {
+            margin-bottom: 10px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.3rem;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 25px;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .method.send {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .method.receive {
+            background: linear-gradient(135deg, #007bff, #6610f2);
+        }
+
+        .method.subscribe {
+            background: linear-gradient(135deg, #fd7e14, #e83e8c);
+        }
+
+        .endpoint-url {
+            font-family: 'Courier New', monospace;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            font-weight: bold;
+        }
+
+        .endpoint-content {
+            padding: 25px;
+        }
+
+        .endpoint-description {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            line-height: 1.7;
+        }
+
+        .payload-section {
+            margin: 20px 0;
+        }
+
+        .payload-section h4 {
+            color: #555;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+            border: 1px solid #4a5568;
+        }
+
+        .code-block .comment {
+            color: #68d391;
+            font-style: italic;
+        }
+
+        .code-block .string {
+            color: #fbb6ce;
+        }
+
+        .code-block .number {
+            color: #90cdf4;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.15);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .feature-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .example-section {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 5px solid #f39c12;
+        }
+
+        .example-section h4 {
+            color: #8b4513;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            position: relative;
+            border-left: 5px solid;
+        }
+
+        .alert.info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .alert.warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+            margin-top: 40px;
+            color: #666;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .toc ul {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-plug"></i> WebSocket API Documentation</h1>
+            <p>Real-time Communication Guide for Caro Game Platform</p>
+            <div class="version-badge">
+                <i class="fas fa-code-branch"></i> Version 2025.1 | Spring Boot 3.5.3 | Enhanced Features
+            </div>
+        </div>
+
+        <div class="toc">
+            <h2><i class="fas fa-list"></i> Mục lục</h2>
+            <ul>
+                <li><a href="#connection"><i class="fas fa-link"></i> Kết nối WebSocket</a></li>
+                <li><a href="#authentication"><i class="fas fa-shield-alt"></i> Xác thực JWT</a></li>
+                <li><a href="#client-to-server"><i class="fas fa-arrow-up"></i> Client → Server</a></li>
+                <li><a href="#server-to-client"><i class="fas fa-arrow-down"></i> Server → Client</a></li>
+                <li><a href="#enhanced-features"><i class="fas fa-star"></i> Enhanced Features</a></li>
+                <li><a href="#game-flow"><i class="fas fa-gamepad"></i> Game Flow</a></li>
+                <li><a href="#error-handling"><i class="fas fa-exclamation-triangle"></i> Error Handling</a></li>
+                <li><a href="#best-practices"><i class="fas fa-thumbs-up"></i> Best Practices</a></li>
+            </ul>
+        </div>
+
+        <div id="connection" class="connection-info">
+            <h2><i class="fas fa-link"></i> Kết nối WebSocket</h2>
+            <p><strong>WebSocket URL:</strong></p>
+            <code>ws://localhost:8080/ws?token=Bearer {JWT_TOKEN}</code>
+            <p><strong>Protocol:</strong> STOMP (Simple Text Oriented Messaging Protocol)</p>
+            <p><strong>Authentication:</strong> JWT Token trong query parameter</p>
+        </div>
+
+        <div class="alert info">
+            <strong><i class="fas fa-info-circle"></i> Lưu ý quan trọng:</strong> 
+            Tất cả WebSocket connections phải bao gồm JWT token hợp lệ để xác thực. 
+            Token sẽ được validate tự động khi kết nối.
+        </div>
+
+        <div id="authentication" class="section">
+            <h2><i class="fas fa-shield-alt"></i> Xác thực JWT</h2>
+            
+            <div class="example-section">
+                <h4><i class="fas fa-code"></i> JavaScript Connection Example</h4>
+                <div class="code-block">
+<span class="comment">// Kết nối WebSocket với JWT token</span>
+const token = localStorage.getItem('accessToken');
+const socket = new WebSocket(`ws://localhost:8080/ws?token=Bearer ${token}`);
+const stompClient = Stomp.over(socket);
+
+<span class="comment">// Headers for STOMP connection</span>
+const headers = {
+    'Authorization': `Bearer ${token}`
+};
+
+<span class="comment">// Connect với error handling</span>
+stompClient.connect(headers, 
+    function(frame) {
+        console.log('<span class="string">Connected:</span>', frame);
+        <span class="comment">// Subscribe to topics sau khi connected</span>
+        subscribeToRoomEvents(roomId);
+    },
+    function(error) {
+        console.error('<span class="string">Connection error:</span>', error);
+    }
+);
+                </div>
+            </div>
+        </div>
+
+        <div id="client-to-server" class="section">
+            <h2><i class="fas fa-arrow-up"></i> Client → Server Endpoints</h2>
+            <p>Các destinations mà client có thể gửi messages đến server:</p>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-sign-in-alt"></i> Tham gia phòng
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/join</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Tham gia vào một phòng game cụ thể. Player sẽ được thêm vào phòng với trạng thái NOT_READY.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">{}</div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+<span class="comment">// Broadcast đến tất cả players trong phòng</span>
+Topic: /topic/room/{roomId}
+{
+  "<span class="string">type</span>": "<span class="string">PLAYER_JOINED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">playerId</span>": <span class="number">123</span>,
+    "<span class="string">playerName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">readyState</span>": "<span class="string">NOT_READY</span>",
+    "<span class="string">joinedAt</span>": "<span class="string">2025-01-08T10:30:00Z</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-check-circle"></i> Đánh dấu sẵn sàng (Enhanced)
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/ready</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        <strong>Enhanced Feature:</strong> 2-step ready system. Player click "Mark Ready" để chuyển từ NOT_READY → READY. Game tự động start khi cả 2 players đều READY.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">{}</div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+<span class="comment">// Player ready event</span>
+{
+  "<span class="string">type</span>": "<span class="string">PLAYER_READY</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">playerId</span>": <span class="number">123</span>,
+    "<span class="string">playerName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">readyState</span>": "<span class="string">READY</span>"
+  }
+}
+
+<span class="comment">// Auto game start khi cả 2 players ready</span>
+{
+  "<span class="string">type</span>": "<span class="string">GAME_STARTED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">gameState</span>": "<span class="string">IN_PROGRESS</span>",
+    "<span class="string">gameStartedAt</span>": "<span class="string">2025-01-08T10:30:00Z</span>",
+    "<span class="string">currentTurn</span>": "<span class="string">X</span>",
+    "<span class="string">players</span>": [
+      {
+        "<span class="string">id</span>": <span class="number">123</span>,
+        "<span class="string">symbol</span>": "<span class="string">X</span>",
+        "<span class="string">readyState</span>": "<span class="string">IN_GAME</span>"
+      }
+    ]
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-mouse-pointer"></i> Thực hiện nước đi
+                    </h3>
+                    <div class="endpoint-url">/app/game/{roomId}/move</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Thực hiện một nước đi trong game Caro. Server sẽ validate tính hợp lệ của nước đi và kiểm tra điều kiện thắng.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">xPosition</span>": <span class="number">7</span>,
+  "<span class="string">yPosition</span>": <span class="number">8</span>
+}
+                        </div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+<span class="comment">// Move made event</span>
+Topic: /topic/game/{roomId}/move
+{
+  "<span class="string">roomId</span>": <span class="number">123</span>,
+  "<span class="string">matchId</span>": <span class="number">456</span>,
+  "<span class="string">xPosition</span>": <span class="number">7</span>,
+  "<span class="string">yPosition</span>": <span class="number">8</span>,
+  "<span class="string">playerId</span>": <span class="number">123</span>,
+  "<span class="string">playerSymbol</span>": "<span class="string">X</span>",
+  "<span class="string">moveNumber</span>": <span class="number">15</span>,
+  "<span class="string">nextTurnPlayerId</span>": <span class="number">456</span>,
+  "<span class="string">gameState</span>": "<span class="string">IN_PROGRESS</span>",
+  "<span class="string">gameResult</span>": "<span class="string">ONGOING</span>",
+  "<span class="string">winnerId</span>": null,
+  "<span class="string">board</span>": [[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,...], ...],
+  "<span class="string">isValidMove</span>": true,
+  "<span class="string">message</span>": "<span class="string">Move successful</span>",
+  "<span class="string">timestamp</span>": "<span class="string">2025-01-08T10:35:00.123456</span>"
+}
+
+<span class="comment">// Game win event (nếu thắng)</span>
+{
+  "<span class="string">type</span>": "<span class="string">GAME_WON</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">winnerId</span>": <span class="number">123</span>,
+    "<span class="string">winnerName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">winningSequence</span>": [[<span class="number">7</span>,<span class="number">8</span>], [<span class="number">8</span>,<span class="number">9</span>], [<span class="number">9</span>,<span class="number">10</span>], [<span class="number">10</span>,<span class="number">11</span>], [<span class="number">11</span>,<span class="number">12</span>]],
+    "<span class="string">gameEndReason</span>": "<span class="string">WIN</span>",
+    "<span class="string">gameEndedAt</span>": "<span class="string">2025-01-08T10:45:00Z</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-flag"></i> Đầu hàng
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/surrender</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Player đầu hàng và tự động thua game. Game sẽ kết thúc ngay lập tức.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">{}</div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+<span class="comment">// Game ended by surrender</span>
+Topic: /topic/room/{roomId}
+{
+  "<span class="string">type</span>": "<span class="string">GAME_ENDED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">gameResult</span>": "<span class="string">SURRENDER</span>",
+    "<span class="string">winnerId</span>": <span class="number">456</span>,
+    "<span class="string">loserId</span>": <span class="number">123</span>,
+    "<span class="string">endedAt</span>": "<span class="string">2025-01-08T10:45:00Z</span>",
+    "<span class="string">endReason</span>": "<span class="string">Player surrendered</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-redo"></i> Yêu cầu rematch (Enhanced 2-step)
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/rematch/request</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        <strong>Enhanced Feature:</strong> Step 1 của 2-step rematch process. Player request rematch sau khi game kết thúc.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">{}</div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">type</span>": "<span class="string">REMATCH_REQUESTED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">requesterId</span>": <span class="number">123</span>,
+    "<span class="string">requesterName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">message</span>": "<span class="string">john_doe wants a rematch!</span>",
+    "<span class="string">requestedAt</span>": "<span class="string">2025-01-08T10:50:00Z</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-handshake"></i> Chấp nhận rematch (Enhanced 2-step)
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/rematch/accept</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        <strong>Enhanced Feature:</strong> Step 2 của 2-step rematch process. Player accept rematch request → tự động tạo room mới.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">{}</div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+<span class="comment">// Accept event</span>
+{
+  "<span class="string">type</span>": "<span class="string">REMATCH_ACCEPTED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">accepterId</span>": <span class="number">456</span>,
+    "<span class="string">accepterName</span>": "<span class="string">jane_doe</span>",
+    "<span class="string">message</span>": "<span class="string">jane_doe accepted the rematch!</span>"
+  }
+}
+
+<span class="comment">// Auto tạo room mới</span>
+{
+  "<span class="string">type</span>": "<span class="string">REMATCH_CREATED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">newRoomId</span>": <span class="number">789</span>,
+    "<span class="string">message</span>": "<span class="string">New rematch room created! Redirecting...</span>",
+    "<span class="string">redirectUrl</span>": "<span class="string">/gameroom/789</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-comments"></i> Gửi tin nhắn chat
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/chat</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Gửi tin nhắn chat trong phòng game. Tin nhắn sẽ được broadcast đến tất cả players trong phòng.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">content</span>": "<span class="string">Hello everyone! Good luck! 🎮</span>"
+}
+                        </div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+Topic: /topic/room/{roomId}/chat
+{
+  "<span class="string">type</span>": "<span class="string">CHAT_MESSAGE</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">senderId</span>": <span class="number">123</span>,
+    "<span class="string">senderName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">content</span>": "<span class="string">Hello everyone! Good luck! 🎮</span>",
+    "<span class="string">timestamp</span>": "<span class="string">2025-01-08T10:32:00Z</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method send">SEND</span>
+                        <i class="fas fa-sign-out-alt"></i> Rời phòng
+                    </h3>
+                    <div class="endpoint-url">/app/room/{roomId}/leave</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Rời khỏi phòng game. Nếu game đang diễn ra, player sẽ thua tự động.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-paper-plane"></i> Payload:</h4>
+                        <div class="code-block">{}</div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Response Events:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">type</span>": "<span class="string">PLAYER_LEFT</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">playerId</span>": <span class="number">123</span>,
+    "<span class="string">playerName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">leftAt</span>": "<span class="string">2025-01-08T10:40:00Z</span>",
+    "<span class="string">gameEndReason</span>": "<span class="string">LEAVE</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="server-to-client" class="section">
+            <h2><i class="fas fa-arrow-down"></i> Server → Client Subscriptions</h2>
+            <p>Các topics mà client cần subscribe để nhận events từ server:</p>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method subscribe">SUBSCRIBE</span>
+                        <i class="fas fa-home"></i> Room Events
+                    </h3>
+                    <div class="endpoint-url">/topic/room/{roomId}</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Subscribe để nhận tất cả events liên quan đến phòng game (join, leave, ready, game state changes, rematch events).
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-list"></i> Event Types:</h4>
+                        <div class="code-block">
+<span class="comment">// Các loại events có thể nhận được:</span>
+- ROOM_UPDATE          <span class="comment">// Cập nhật thông tin phòng</span>
+- PLAYER_JOINED        <span class="comment">// Player tham gia phòng</span>
+- PLAYER_LEFT          <span class="comment">// Player rời phòng</span>
+- PLAYER_READY         <span class="comment">// Player đánh dấu ready (Enhanced)</span>
+- GAME_STARTED         <span class="comment">// Game bắt đầu (Auto when both ready)</span>
+- GAME_ENDED           <span class="comment">// Game kết thúc</span>
+- REMATCH_REQUESTED    <span class="comment">// Yêu cầu rematch (Enhanced)</span>
+- REMATCH_ACCEPTED     <span class="comment">// Chấp nhận rematch (Enhanced)</span>
+- REMATCH_CREATED      <span class="comment">// Room mới được tạo (Enhanced)</span>
+                        </div>
+                    </div>
+                    <div class="example-section">
+                        <h4><i class="fas fa-code"></i> JavaScript Subscribe Example</h4>
+                        <div class="code-block">
+<span class="comment">// Subscribe to room events</span>
+stompClient.subscribe(`/topic/room/${roomId}`, function(message) {
+    const event = JSON.parse(message.body);
+    
+    switch(event.type) {
+        case '<span class="string">PLAYER_JOINED</span>':
+            handlePlayerJoined(event.data);
+            break;
+        case '<span class="string">PLAYER_READY</span>':
+            handlePlayerReady(event.data);
+            break;
+        case '<span class="string">GAME_STARTED</span>':
+            handleGameStarted(event.data);
+            break;
+        case '<span class="string">REMATCH_REQUESTED</span>':
+            showRematchAcceptButton(event.data);
+            break;
+        case '<span class="string">REMATCH_CREATED</span>':
+            redirectToNewRoom(event.data.newRoomId);
+            break;
+        default:
+            console.log('<span class="string">Unknown event:</span>', event);
+    }
+});
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method subscribe">SUBSCRIBE</span>
+                        <i class="fas fa-chess"></i> Game Moves
+                    </h3>
+                    <div class="endpoint-url">/topic/game/{roomId}/move</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Subscribe để nhận thông tin về các nước đi trong game (moves, win, draw).
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-list"></i> Event Types:</h4>
+                        <div class="code-block">
+<span class="comment">// Game move events:</span>
+- MOVE_MADE           <span class="comment">// Nước đi được thực hiện</span>
+- GAME_WON            <span class="comment">// Game có người thắng</span>
+- GAME_DRAW           <span class="comment">// Game hòa</span>
+- INVALID_MOVE        <span class="comment">// Nước đi không hợp lệ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method subscribe">SUBSCRIBE</span>
+                        <i class="fas fa-flag-checkered"></i> Game End Events
+                    </h3>
+                    <div class="endpoint-url">/topic/game/{roomId}/end</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Subscribe để nhận thông báo khi game kết thúc (win, draw, surrender). Topic này chỉ được broadcast khi game state = FINISHED.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Message Format:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">roomId</span>": <span class="number">123</span>,
+  "<span class="string">matchId</span>": <span class="number">456</span>,
+  "<span class="string">gameState</span>": "<span class="string">FINISHED</span>",
+  "<span class="string">gameResult</span>": "<span class="string">WIN</span>", <span class="comment">// WIN, DRAW, SURRENDER</span>
+  "<span class="string">winnerId</span>": <span class="number">123</span>,
+  "<span class="string">board</span>": [[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,...], ...],
+  "<span class="string">message</span>": "<span class="string">Game won</span>",
+  "<span class="string">timestamp</span>": "<span class="string">2025-01-08T10:35:00.123456</span>"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method subscribe">SUBSCRIBE</span>
+                        <i class="fas fa-list"></i> Global Room Updates
+                    </h3>
+                    <div class="endpoint-url">/topic/room-updates</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Subscribe để nhận thông báo về tất cả room updates toàn cục (room created, deleted, player count changes).
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-bell"></i> Message Format:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">type</span>": "<span class="string">ROOM_UPDATED</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">roomId</span>": <span class="number">123</span>,
+    "<span class="string">roomName</span>": "<span class="string">My Room</span>",
+    "<span class="string">playerCount</span>": <span class="number">2</span>,
+    "<span class="string">maxPlayers</span>": <span class="number">2</span>,
+    "<span class="string">status</span>": "<span class="string">WAITING</span>",
+    "<span class="string">updateType</span>": "<span class="string">PLAYER_JOINED</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method subscribe">SUBSCRIBE</span>
+                        <i class="fas fa-comments"></i> Chat Messages
+                    </h3>
+                    <div class="endpoint-url">/topic/room/{roomId}/chat</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Subscribe để nhận tin nhắn chat trong phòng game.
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-envelope"></i> Message Format:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">type</span>": "<span class="string">CHAT_MESSAGE</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">senderId</span>": <span class="number">123</span>,
+    "<span class="string">senderName</span>": "<span class="string">john_doe</span>",
+    "<span class="string">content</span>": "<span class="string">Message content</span>",
+    "<span class="string">timestamp</span>": "<span class="string">2025-01-08T10:32:00Z</span>"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method subscribe">SUBSCRIBE</span>
+                        <i class="fas fa-bell"></i> Personal Notifications
+                    </h3>
+                    <div class="endpoint-url">/user/queue/notifications</div>
+                </div>
+                <div class="endpoint-content">
+                    <div class="endpoint-description">
+                        Subscribe để nhận thông báo cá nhân (friend requests, game invitations, system messages).
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-list"></i> Notification Types:</h4>
+                        <div class="code-block">
+<span class="comment">// Personal notification events:</span>
+- FRIEND_REQUEST       <span class="comment">// Lời mời kết bạn</span>
+- GAME_INVITATION      <span class="comment">// Lời mời chơi game</span>
+- SYSTEM_MESSAGE       <span class="comment">// Thông báo hệ thống</span>
+- USER_STATUS_CHANGE   <span class="comment">// Thay đổi trạng thái bạn bè</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="enhanced-features" class="section">
+            <h2><i class="fas fa-star"></i> Enhanced Features 2025</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-check-double"></i></div>
+                    <h3>2-Step Ready System</h3>
+                    <p><strong>Tính năng mới:</strong> Players phải click "Mark Ready" trước khi game bắt đầu. Game tự động start khi cả 2 players đều ready.</p>
+                    <div class="code-block">
+<span class="comment">// Flow:</span>
+NOT_READY → READY → IN_GAME
+    ↓         ↓        ↓
+ Join    Mark     Auto
+ Room    Ready    Start
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-redo-alt"></i></div>
+                    <h3>2-Step Rematch Process</h3>
+                    <p><strong>Tính năng mới:</strong> Rematch process gồm 2 bước: Request → Accept → Auto create new room.</p>
+                    <div class="code-block">
+<span class="comment">// Flow:</span>
+Step 1: Player A request rematch
+Step 2: Player B accept rematch  
+Step 3: Auto create new room
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>Enhanced Game State Tracking</h3>
+                    <p>Chi tiết tracking game states và player states với các transitions rõ ràng.</p>
+                    <div class="code-block">
+<span class="comment">// Game States:</span>
+WAITING_FOR_PLAYERS
+WAITING_FOR_READY  
+IN_PROGRESS
+FINISHED
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>JWT Authentication</h3>
+                    <p>Bảo mật WebSocket connection với JWT token validation tự động.</p>
+                    <div class="code-block">
+<span class="comment">// Connection:</span>
+ws://localhost:8080/ws?token=Bearer {JWT}
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-users"></i></div>
+                    <h3>Real-time Player Management</h3>
+                    <p>Theo dõi trạng thái players real-time với ready states và game participation.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-history"></i></div>
+                    <h3>Game History & Analytics</h3>
+                    <p>Comprehensive game history tracking với win/loss statistics và game analytics.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-flow" class="section">
+            <h2><i class="fas fa-gamepad"></i> Complete Game Flow</h2>
+            
+            <div class="example-section">
+                <h4><i class="fas fa-route"></i> Enhanced Game Flow với 2-Step Ready System</h4>
+                <div class="code-block">
+<span class="comment">// 1. Players join room</span>
+/app/room/{roomId}/join
+→ PLAYER_JOINED event (readyState: NOT_READY)
+
+<span class="comment">// 2. Players mark ready</span>
+/app/room/{roomId}/ready
+→ PLAYER_READY event (readyState: READY)
+
+<span class="comment">// 3. Auto game start when both ready</span>
+→ GAME_STARTED event (gameState: IN_PROGRESS)
+
+<span class="comment">// 4. Players make moves</span>
+/app/room/{roomId}/move
+→ MOVE_MADE events
+
+<span class="comment">// 5. Game ends</span>
+→ GAME_WON/GAME_DRAW event
+
+<span class="comment">// 6. Enhanced 2-step rematch</span>
+/app/room/{roomId}/rematch/request
+→ REMATCH_REQUESTED event
+
+/app/room/{roomId}/rematch/accept  
+→ REMATCH_ACCEPTED event
+→ REMATCH_CREATED event (auto new room)
+                </div>
+            </div>
+
+            <div class="alert success">
+                <strong><i class="fas fa-lightbulb"></i> Pro Tip:</strong> 
+                Enhanced features giúp game flow mượt mà hơn với 2-step processes cho ready và rematch, 
+                tránh confusion và cung cấp better user experience.
+            </div>
+        </div>
+
+        <div id="error-handling" class="section">
+            <h2><i class="fas fa-exclamation-triangle"></i> Error Handling</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <h3>
+                        <span class="method receive">ERROR</span>
+                        <i class="fas fa-times-circle"></i> Error Response Format
+                    </h3>
+                </div>
+                <div class="endpoint-content">
+                    <div class="payload-section">
+                        <h4><i class="fas fa-exclamation"></i> Error Message Format:</h4>
+                        <div class="code-block">
+{
+  "<span class="string">type</span>": "<span class="string">ERROR</span>",
+  "<span class="string">data</span>": {
+    "<span class="string">errorCode</span>": "<span class="string">ROOM_FULL</span>",
+    "<span class="string">message</span>": "<span class="string">Room is full. Cannot join.</span>",
+    "<span class="string">details</span>": {
+      "<span class="string">roomId</span>": <span class="number">123</span>,
+      "<span class="string">currentPlayers</span>": <span class="number">2</span>,
+      "<span class="string">maxPlayers</span>": <span class="number">2</span>
+    },
+    "<span class="string">timestamp</span>": "<span class="string">2025-01-08T10:35:00Z</span>"
+  }
+}
+                        </div>
+                    </div>
+                    <div class="payload-section">
+                        <h4><i class="fas fa-list"></i> Common Error Codes:</h4>
+                        <div class="code-block">
+ROOM_NOT_FOUND        <span class="comment">// Phòng không tồn tại</span>
+ROOM_FULL             <span class="comment">// Phòng đã đầy</span>
+ALREADY_IN_ROOM       <span class="comment">// Đã ở trong phòng khác</span>
+GAME_IN_PROGRESS      <span class="comment">// Game đang diễn ra</span>
+INVALID_MOVE          <span class="comment">// Nước đi không hợp lệ</span>
+NOT_YOUR_TURN         <span class="comment">// Không phải lượt của bạn</span>
+AUTHENTICATION_ERROR  <span class="comment">// Lỗi xác thực JWT</span>
+PERMISSION_DENIED     <span class="comment">// Không có quyền truy cập</span>
+PLAYER_NOT_READY      <span class="comment">// Player chưa ready</span>
+REMATCH_NOT_AVAILABLE <span class="comment">// Không thể rematch</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert warning">
+                <strong><i class="fas fa-exclamation-triangle"></i> Lưu ý:</strong> 
+                Client nên handle tất cả error cases và hiển thị thông báo phù hợp cho user. 
+                Error events được gửi trực tiếp đến client gây ra lỗi, không broadcast.
+            </div>
+        </div>
+
+        <div id="best-practices" class="section">
+            <h2><i class="fas fa-thumbs-up"></i> Best Practices</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-plug"></i></div>
+                    <h3>Connection Management</h3>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Always validate JWT token trước khi connect</li>
+                        <li>Implement reconnection logic với exponential backoff</li>
+                        <li>Handle connection lost gracefully</li>
+                        <li>Clean up subscriptions khi disconnect</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-sync"></i></div>
+                    <h3>Event Handling</h3>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Subscribe đến tất cả required topics sau khi connect</li>
+                        <li>Handle tất cả event types (không bỏ qua)</li>
+                        <li>Implement proper error handling cho mỗi event</li>
+                        <li>Update UI immediately khi nhận events</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-gamepad"></i></div>
+                    <h3>Game State Management</h3>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Track game state locally để validate actions</li>
+                        <li>Implement ready system properly (2-step)</li>
+                        <li>Handle rematch flow correctly (2-step)</li>
+                        <li>Validate moves client-side trước khi send</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>Security</h3>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Never expose JWT token trong logs</li>
+                        <li>Refresh token khi gần expire</li>
+                        <li>Validate server responses trước khi process</li>
+                        <li>Implement rate limiting cho actions</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-code"></i></div>
+                    <h3>Performance</h3>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Minimize số lượng subscriptions</li>
+                        <li>Debounce rapid user actions</li>
+                        <li>Use efficient DOM updates</li>
+                        <li>Cache data locally khi có thể</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-bug"></i></div>
+                    <h3>Debugging</h3>
+                    <ul style="margin-top: 15px; padding-left: 20px;">
+                        <li>Log tất cả WebSocket events với timestamps</li>
+                        <li>Include request/response correlation IDs</li>
+                        <li>Monitor connection health regularly</li>
+                        <li>Implement comprehensive error logging</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="example-section">
+                <h4><i class="fas fa-code"></i> Complete Client Implementation Example</h4>
+                <div class="code-block">
+class CaroWebSocketClient {
+    constructor(token, roomId) {
+        this.token = token;
+        this.roomId = roomId;
+        this.stompClient = null;
+        this.subscriptions = [];
+        this.isConnected = false;
+    }
+
+    connect() {
+        const socket = new WebSocket(`ws://localhost:8080/ws?token=Bearer ${this.token}`);
+        this.stompClient = Stomp.over(socket);
+        
+        this.stompClient.connect({}, 
+            frame => this.onConnected(frame),
+            error => this.onError(error)
+        );
+    }
+
+    onConnected(frame) {
+        console.log('<span class="string">Connected:</span>', frame);
+        this.isConnected = true;
+        
+        <span class="comment">// Subscribe to all required topics</span>
+        this.subscribeToTopics();
+        
+        <span class="comment">// Join room automatically</span>
+        this.joinRoom();
+    }
+
+    subscribeToTopics() {
+        <span class="comment">// Room events</span>
+        this.subscriptions.push(
+            this.stompClient.subscribe(`/topic/room/${this.roomId}`, 
+                message => this.handleRoomEvent(JSON.parse(message.body))
+            )
+        );
+        
+        <span class="comment">// Game moves</span>
+        this.subscriptions.push(
+            this.stompClient.subscribe(`/topic/game/${this.roomId}/move`, 
+                message => this.handleMoveEvent(JSON.parse(message.body))
+            )
+        );
+        
+        <span class="comment">// Game end events</span>
+        this.subscriptions.push(
+            this.stompClient.subscribe(`/topic/game/${this.roomId}/end`, 
+                message => this.handleGameEndEvent(JSON.parse(message.body))
+            )
+        );
+        
+        <span class="comment">// Chat messages</span>
+        this.subscriptions.push(
+            this.stompClient.subscribe(`/topic/room/${this.roomId}/chat`, 
+                message => this.handleChatEvent(JSON.parse(message.body))
+            )
+        );
+        
+        <span class="comment">// Personal notifications</span>
+        this.subscriptions.push(
+            this.stompClient.subscribe('/user/queue/notifications', 
+                message => this.handleNotification(JSON.parse(message.body))
+            )
+        );
+    }
+
+    handleRoomEvent(event) {
+        switch(event.type) {
+            case '<span class="string">PLAYER_JOINED</span>':
+                this.updatePlayerList(event.data);
+                break;
+            case '<span class="string">PLAYER_READY</span>':
+                this.updatePlayerReadyState(event.data);
+                break;
+            case '<span class="string">GAME_STARTED</span>':
+                this.startGame(event.data);
+                break;
+            case '<span class="string">REMATCH_REQUESTED</span>':
+                this.showRematchAcceptButton(event.data);
+                break;
+            case '<span class="string">REMATCH_CREATED</span>':
+                this.redirectToNewRoom(event.data.newRoomId);
+                break;
+        }
+    }
+
+    <span class="comment">// Enhanced methods for new features</span>
+    markReady() {
+        if (this.isConnected) {
+            this.stompClient.send(`/app/room/${this.roomId}/ready`, {}, '{}');
+        }
+    }
+
+    requestRematch() {
+        if (this.isConnected) {
+            this.stompClient.send(`/app/room/${this.roomId}/rematch/request`, {}, '{}');
+        }
+    }
+
+    acceptRematch() {
+        if (this.isConnected) {
+            this.stompClient.send(`/app/room/${this.roomId}/rematch/accept`, {}, '{}');
+        }
+    }
+
+    surrender() {
+        if (this.isConnected) {
+            this.stompClient.send(`/app/room/${this.roomId}/surrender`, {}, '{}');
+        }
+    }
+
+    <span class="comment">// Handle game end events (win, draw, surrender)</span>
+    handleGameEndEvent(event) {
+        console.log('<span class="string">Game ended:</span>', event);
+        switch(event.gameResult) {
+            case '<span class="string">WIN</span>':
+                this.showGameResult('Game Over', `Player ${event.winnerId} wins!`);
+                break;
+            case '<span class="string">DRAW</span>':
+                this.showGameResult('Game Over', 'It\'s a draw!');
+                break;
+            case '<span class="string">SURRENDER</span>':
+                this.showGameResult('Game Over', `Player ${event.winnerId} wins by surrender!`);
+                break;
+        }
+        this.disableGameBoard();
+        this.showRematchButton();
+    }
+
+    disconnect() {
+        if (this.stompClient && this.isConnected) {
+            <span class="comment">// Clean up subscriptions</span>
+            this.subscriptions.forEach(sub => sub.unsubscribe());
+            this.stompClient.disconnect();
+            this.isConnected = false;
+        }
+    }
+}
+
+<span class="comment">// Usage</span>
+const client = new CaroWebSocketClient(jwtToken, roomId);
+client.connect();
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <h3><i class="fas fa-heart"></i> Caro Game WebSocket API</h3>
+            <p>
+                Developed with ❤️ by <a href="https://github.com/MinhAnh-IT">MinhAnh-IT</a> | 
+                <a href="https://github.com/MinhAnh-IT/Caro-Game">GitHub Repository</a> | 
+                Version 2025.1
+            </p>
+            <p style="margin-top: 10px; color: #999;">
+                Enhanced with 2-step ready system, 2-step rematch process, and comprehensive real-time features
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+</body>
+</html>

@@ -75,7 +75,7 @@ export const getUserRooms = async (
 ) => {
   try {
     const response = await instance.get(
-      `/api/rooms/user-rooms?page=${page}&size=${size}&sortDirection=${sortDirection}`
+      `/rooms/user-rooms?page=${page}&size=${size}&sortDirection=${sortDirection}`
     );
     return response.data.data;
   } catch (error) {
@@ -114,7 +114,7 @@ export const getUserGameHistory = async (
 ) => {
   try {
     const response = await instance.get(
-      `/api/rooms/history?page=${page}&size=${size}&sortDirection=${sortDirection}`
+      `/rooms/history?page=${page}&size=${size}&sortDirection=${sortDirection}`
     );
     return response.data.data;
   } catch (error) {

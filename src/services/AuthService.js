@@ -1,5 +1,4 @@
 import instance from "../config/axios";
-import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import { getVietnameseMessage } from "../constants/VietNameseStatus";
 
@@ -12,7 +11,7 @@ const handleApiError = (
   const vietnameseMessage =
     getVietnameseMessage(error.response?.data?.errorCode) || errorMessage;
   toast.error(vietnameseMessage);
-  if (error.response?.status === 401) {
+  if (error.response?.status === 401 || error.response?.status === 423) {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     window.location.href = "/login";
@@ -30,15 +29,13 @@ export const refreshToken = async () => {
       throw new Error("Không tìm thấy refresh token trong localStorage");
     }
 
-    const response = await instance.post("/api/auth/refresh-token", {
+    const response = await instance.post("/auth/refresh-token", {
       refreshToken,
     });
     const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", newRefreshToken);
-
-    return response.data.data;
+    return response.data.data; // AuthResponse {accessToken, refreshToken, tokenType, expiresIn}
   } catch (error) {
     handleApiError(error, "Không thể làm mới token, vui lòng đăng nhập lại");
   }
@@ -47,8 +44,8 @@ export const refreshToken = async () => {
 // Register
 export const register = async (userData) => {
   try {
-    const response = await instance.post("/api/auth/register", userData);
-    return response.data.data;
+    const response = await instance.post("/auth/register", userData);
+    return response.data.data; // UserResponse
   } catch (error) {
     handleApiError(error, "Đăng ký thất bại, vui lòng kiểm tra lại thông tin");
   }
@@ -57,11 +54,12 @@ export const register = async (userData) => {
 // Login
 export const login = async (loginData) => {
   try {
-    const response = await instance.post("/api/auth/login", loginData);
+    const response = await instance.post("/auth/login", loginData);
     const { accessToken, refreshToken, user } = response.data.data;
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
-    return response.data.data;
+    // Nếu cần lưu user: localStorage.setItem("user", JSON.stringify(user));
+    return response.data.data; // AuthResponse {accessToken, refreshToken, tokenType, expiresIn, user}
   } catch (error) {
     handleApiError(
       error,
@@ -73,11 +71,11 @@ export const login = async (loginData) => {
 // Forgot Password
 export const forgotPassword = async (email) => {
   try {
-    const response = await instance.post("/api/auth/forgot-password", {
+    const response = await instance.post("/auth/forgot-password", {
       email,
     });
     toast.success("OTP đã được gửi đến email của bạn");
-    return response.data;
+    return response.data; // ApiResponse<Void>
   } catch (error) {
     handleApiError(error, "Gửi yêu cầu đặt lại mật khẩu thất bại");
   }
@@ -86,9 +84,9 @@ export const forgotPassword = async (email) => {
 // Reset Password
 export const resetPassword = async (resetData) => {
   try {
-    const response = await instance.post("/api/auth/reset-password", resetData);
+    const response = await instance.post("/auth/reset-password", resetData);
     toast.success("Đặt lại mật khẩu thành công");
-    return response.data;
+    return response.data; // ApiResponse<Void>
   } catch (error) {
     handleApiError(error, "Đặt lại mật khẩu thất bại");
   }
@@ -101,7 +99,7 @@ export const requestChangePasswordOtp = async () => {
       "/api/auth/request-change-password-otp"
     );
     toast.success("OTP thay đổi mật khẩu đã được gửi đến email của bạn");
-    return response.data;
+    return response.data; // ApiResponse<Void>
   } catch (error) {
     handleApiError(error, "Gửi yêu cầu OTP thất bại");
   }
@@ -115,7 +113,7 @@ export const changePassword = async (changePasswordData) => {
       changePasswordData
     );
     toast.success("Thay đổi mật khẩu thành công");
-    return response.data;
+    return response.data; // ApiResponse<Void>
   } catch (error) {
     handleApiError(error, "Thay đổi mật khẩu thất bại");
   }
@@ -125,8 +123,13 @@ export const changePassword = async (changePasswordData) => {
 export const logout = async () => {
   try {
     const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      localStorage.removeItem("refreshToken");
+      window.location.href = "/login";
+      throw new Error("Không tìm thấy access token trong localStorage");
+    }
     const response = await instance.post(
-      "/api/auth/logout",
+      "/auth/logout",
       {},
       {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -135,7 +138,7 @@ export const logout = async () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     window.location.href = "/login";
-    return response.data;
+    return response.data; // ApiResponse<Void>
   } catch (error) {
     handleApiError(error, "Đăng xuất thất bại");
   }

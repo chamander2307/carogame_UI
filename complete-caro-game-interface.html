@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Complete Caro Game Interface - Real-time Multiplayer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            overflow-y: auto;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h2 {
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        h3 {
+            color: #2d3748;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .form-section {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #3182ce, #2c5282);
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #dd6b20, #c05621);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #e53e3e, #c53030);
+        }
+
+        .status-display {
+            background: #edf2f7;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .status-connected {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        /* Game Board Styles */
+        .game-board-container {
+            background: #2d3748;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .game-info {
+            color: white;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(15, 30px);
+            grid-template-rows: repeat(15, 30px);
+            gap: 1px;
+            background: #4a5568;
+            border: 3px solid #4a5568;
+            border-radius: 8px;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .cell:hover {
+            background: #edf2f7;
+            transform: scale(1.1);
+        }
+
+        .cell.x {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .cell.o {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .cell.winning {
+            background: #faf089;
+            color: #744210;
+            animation: winning 0.5s ease-in-out;
+        }
+
+        @keyframes winning {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Room List Styles */
+        .room-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .room-item {
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9em;
+        }
+
+        .room-item:hover {
+            background: #f7fafc;
+        }
+
+        .room-item:last-child {
+            border-bottom: none;
+        }
+
+        .room-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .room-details {
+            font-size: 0.8em;
+            color: #718096;
+            margin-top: 2px;
+        }
+
+        /* Messages and Logs */
+        .messages {
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+            font-size: 0.85em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .message {
+            margin-bottom: 5px;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+
+        .message.info {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .message.success {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .message.error {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .message.websocket {
+            background: #e6fffa;
+            color: #234e52;
+        }
+
+        .message.sent {
+            background: #faf089;
+            color: #744210;
+        }
+
+        /* Chat Styles */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 200px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px 8px 0 0;
+            padding: 10px;
+            background: white;
+            font-size: 0.9em;
+        }
+
+        .chat-input-container {
+            display: flex;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: white;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            border-radius: 0;
+            margin: 0;
+        }
+
+        .chat-send-btn {
+            width: auto;
+            margin: 0;
+            border-radius: 0 0 8px 0;
+            padding: 8px 15px;
+        }
+
+        /* Player Status */
+        .player-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .player-card {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .player-card.ready {
+            background: #c6f6d5;
+            border-color: #48bb78;
+        }
+
+        .player-card.active {
+            background: #faf089;
+            border-color: #d69e2e;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+                height: auto;
+            }
+            
+            .board {
+                grid-template-columns: repeat(15, 25px);
+                grid-template-rows: repeat(15, 25px);
+            }
+            
+            .cell {
+                width: 25px;
+                height: 25px;
+                font-size: 14px;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4299e1;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left Panel: Authentication & Room Management -->
+        <div class="left-panel panel">
+            <!-- Authentication Section -->
+            <div class="form-section">
+                <h2>🔐 Authentication</h2>
+                <div class="input-group">
+                    <label>Username:</label>
+                    <input type="text" id="username" placeholder="Enter username" value="testuser">
+                </div>
+                <div class="input-group">
+                    <label>Password:</label>
+                    <input type="password" id="password" placeholder="Enter password" value="password123">
+                </div>
+                <button onclick="login()" id="loginBtn">🔑 Login</button>
+                <button onclick="logout()" id="logoutBtn" class="btn-warning" disabled>🚪 Logout</button>
+                <div id="authStatus" class="status-display status-disconnected">Not authenticated</div>
+            </div>
+
+            <!-- WebSocket Connection -->
+            <div class="form-section">
+                <h2>🔌 WebSocket Connection</h2>
+                <button onclick="connectWebSocket()" id="connectBtn" disabled>🔗 Connect</button>
+                <button onclick="disconnectWebSocket()" id="disconnectBtn" class="btn-danger" disabled>❌ Disconnect</button>
+                <div id="wsStatus" class="status-display status-disconnected">Disconnected</div>
+            </div>
+
+            <!-- Room Creation -->
+            <div class="form-section">
+                <h2>🏠 Create Room</h2>
+                <div class="input-group">
+                    <label>Room Name:</label>
+                    <input type="text" id="roomName" placeholder="Enter room name" value="My Caro Room">
+                </div>
+                <div class="input-group">
+                    <label>Room Type:</label>
+                    <select id="roomType">
+                        <option value="false">Public Room</option>
+                        <option value="true">Private Room</option>
+                    </select>
+                </div>
+                <button onclick="createRoom()" id="createRoomBtn" disabled>➕ Create Room</button>
+                <button onclick="quickPlay()" id="quickPlayBtn" disabled class="btn-success">⚡ Quick Play</button>
+            </div>
+
+            <!-- Join Private Room -->
+            <div class="form-section">
+                <h2>🔑 Join Private Room</h2>
+                <div class="input-group">
+                    <label>Join Code:</label>
+                    <input type="text" id="joinCode" placeholder="Enter room code">
+                </div>
+                <button onclick="findRoomByCode()" id="findRoomBtn" disabled>🔍 Find Room</button>
+                <button onclick="joinRoomByCode()" id="joinByCodeBtn" disabled>🚪 Join by Code</button>
+            </div>
+
+            <!-- Public Rooms List -->
+            <div class="form-section">
+                <h2>🌐 Public Rooms</h2>
+                <button onclick="loadPublicRooms()" id="loadRoomsBtn" disabled>🔄 Refresh Rooms</button>
+                <div id="roomsList" class="room-list"></div>
+            </div>
+        </div>
+
+        <!-- Center Panel: Game Board -->
+        <div class="center-panel panel">
+            <div class="game-board-container">
+                <div class="game-info">
+                    <h2 style="color: white; border: none; margin: 0;">🎯 Caro Game Board</h2>
+                    <div id="gameInfo">Waiting for game...</div>
+                </div>
+                
+                <!-- Player Status -->
+                <div class="player-status">
+                    <div class="player-card" id="player1Card">
+                        <div><strong>You</strong></div>
+                        <div id="yourStatus">Not Ready</div>
+                    </div>
+                    <div class="player-card" id="player2Card">
+                        <div><strong>Opponent</strong></div>
+                        <div id="opponentStatus">Waiting...</div>
+                    </div>
+                </div>
+
+                <!-- Game Board -->
+                <div id="gameBoard" class="board"></div>
+
+                <!-- Game Controls -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                    <button onclick="markReady()" id="readyBtn" class="btn-success" disabled>✅ Mark Ready</button>
+                    <button onclick="getRoomStatus()" id="statusBtn" disabled>📊 Get Status</button>
+                    <button onclick="debugGameState()" id="debugBtn" disabled>🔍 Debug State</button>
+                    <button onclick="surrenderGame()" id="surrenderBtn" class="btn-danger" disabled>🏳️ Surrender</button>
+                    <button onclick="leaveRoom()" id="leaveBtn" class="btn-warning" disabled>🚪 Leave Room</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Chat & Logs -->
+        <div class="right-panel panel">
+            <!-- Current Room Info -->
+            <div class="form-section">
+                <h2>📍 Current Room</h2>
+                <div class="status-display">
+                    <div><strong>Room ID:</strong> <span id="currentRoomId">None</span></div>
+                    <div><strong>Room Name:</strong> <span id="currentRoomName">None</span></div>
+                    <div><strong>Status:</strong> <span id="roomStatus">None</span></div>
+                    <div><strong>Players:</strong> <span id="playerCount">0/2</span></div>
+                </div>
+            </div>
+
+            <!-- Game Chat -->
+            <div class="form-section">
+                <h2>💬 Game Chat</h2>
+                <div class="chat-container">
+                    <div id="chatMessages" class="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chatInput" class="chat-input" placeholder="Type your message..." 
+                               onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" class="chat-send-btn">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rematch Controls -->
+            <div class="form-section">
+                <h2>🔄 Rematch</h2>
+                <button onclick="requestRematch()" id="requestRematchBtn" class="btn-success" disabled>🔄 Request Rematch</button>
+                <button onclick="acceptRematch()" id="acceptRematchBtn" class="btn-success" disabled>✅ Accept Rematch</button>
+                <button onclick="completeGame()" id="completeBtn" class="btn-warning" disabled>🏁 Complete Game</button>
+            </div>
+
+            <!-- System Messages -->
+            <div class="form-section">
+                <h2>📝 System Messages</h2>
+                <div id="messages" class="messages"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let authToken = null;
+        let stompClient = null;
+        let isConnected = false;
+        let currentRoomId = null;
+        let currentRoomData = null;
+        let currentUserId = null;
+        let gameBoard = Array(15).fill().map(() => Array(15).fill(''));
+        let isMyTurn = false;
+        let mySymbol = '';
+        let gameActive = false;
+
+        // Game state
+        let gameState = {
+            status: 'DISCONNECTED',
+            playerCount: 0,
+            yourReady: false,
+            opponentReady: false,
+            inRoom: false,
+            gameActive: false,
+            canRematch: false
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGameBoard();
+            addMessage('🎯 Welcome to Caro Game! Please login to start playing.', 'info');
+        });
+
+        // Authentication functions
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                addMessage('❌ Please enter username and password', 'error');
+                return;
+            }
+
+            try {
+                addMessage('🔄 Logging in...', 'info');
+                
+                const response = await fetch('http://localhost:8080/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.data.accessToken;
+                    
+                    // Extract user ID from JWT token
+                    try {
+                        const payload = JSON.parse(atob(authToken.split('.')[1]));
+                        currentUserId = payload.userId || payload.sub || payload.id;
+                        console.log('Current user ID:', currentUserId);
+                    } catch (e) {
+                        console.warn('Could not extract user ID from token:', e);
+                    }
+                    
+                    document.getElementById('authStatus').textContent = `Authenticated as ${username}`;
+                    document.getElementById('authStatus').className = 'status-display status-connected';
+                    
+                    document.getElementById('loginBtn').disabled = true;
+                    document.getElementById('logoutBtn').disabled = false;
+                    document.getElementById('connectBtn').disabled = false;
+                    
+                    addMessage(`✅ Login successful! Welcome ${username}`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Login failed: ${errorData.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Login error: ${error.message}`, 'error');
+            }
+        }
+
+        function logout() {
+            if (isConnected) {
+                disconnectWebSocket();
+            }
+            
+            authToken = null;
+            currentUserId = null;
+            document.getElementById('authStatus').textContent = 'Not authenticated';
+            document.getElementById('authStatus').className = 'status-display status-disconnected';
+            
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('logoutBtn').disabled = true;
+            document.getElementById('connectBtn').disabled = true;
+            
+            // Disable all other buttons
+            disableAllButtons();
+            
+            addMessage('👋 Logged out successfully', 'info');
+        }
+
+        // WebSocket functions
+        function connectWebSocket() {
+            if (!authToken) {
+                addMessage('❌ Please login first', 'error');
+                return;
+            }
+
+            try {
+                // Clean token (remove Bearer prefix if exists)
+                let cleanToken = authToken;
+                if (cleanToken.startsWith('Bearer ')) {
+                    cleanToken = cleanToken.substring(7);
+                }
+
+                const serverUrl = 'http://localhost:8080/ws';
+                const connectUrl = `${serverUrl}?token=${encodeURIComponent(cleanToken)}`;
+                addMessage(`🔌 Connecting to WebSocket...`, 'info');
+
+                // Disable connect button during connection
+                document.getElementById('connectBtn').disabled = true;
+
+                // Try native WebSocket first, then fallback to SockJS
+                try {
+                    const wsUrl = connectUrl.replace('http:', 'ws:').replace('https:', 'wss:');
+                    const socket = new WebSocket(wsUrl);
+                    stompClient = Stomp.over(socket);
+                    addMessage('📡 Using native WebSocket connection', 'info');
+                } catch (e) {
+                    addMessage(`📡 Native WebSocket failed, using SockJS fallback: ${e.message}`, 'info');
+                    const sockjsUrl = connectUrl.replace('/ws', '/ws-sockjs');
+                    const socket = new SockJS(sockjsUrl);
+                    stompClient = Stomp.over(socket);
+                }
+
+                // Add debug logging
+                stompClient.debug = function(str) {
+                    console.log('STOMP: ' + str);
+                };
+                
+                stompClient.connect({}, 
+                    function(frame) {
+                        isConnected = true;
+                        document.getElementById('wsStatus').textContent = 'Connected';
+                        document.getElementById('wsStatus').className = 'status-display status-connected';
+                        
+                        document.getElementById('connectBtn').disabled = false;
+                        document.getElementById('disconnectBtn').disabled = false;
+                        enableRoomButtons();
+                        
+                        addMessage('🔗 WebSocket connected successfully', 'success');
+                        addMessage(`📡 Connected to: ${serverUrl}`, 'info');
+                        
+                        // Subscribe to user-specific error messages
+                        stompClient.subscribe('/queue/user/errors', function(message) {
+                            const errorData = JSON.parse(message.body);
+                            addMessage(`❌ Error: ${errorData.message}`, 'error');
+                        });
+                    },
+                    function(error) {
+                        addMessage(`❌ WebSocket connection failed: ${error}`, 'error');
+                        isConnected = false;
+                        
+                        // Re-enable connect button on failure
+                        document.getElementById('connectBtn').disabled = false;
+                    }
+                );
+            } catch (error) {
+                addMessage(`❌ WebSocket error: ${error.message}`, 'error');
+                document.getElementById('connectBtn').disabled = false;
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (stompClient && isConnected) {
+                stompClient.disconnect();
+                isConnected = false;
+                
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                document.getElementById('wsStatus').className = 'status-display status-disconnected';
+                
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                disableRoomButtons();
+                
+                addMessage('❌ WebSocket disconnected', 'info');
+            }
+        }
+
+        // Room management functions
+        async function createRoom() {
+            const roomName = document.getElementById('roomName').value;
+            const isPrivate = document.getElementById('roomType').value === 'true';
+
+            if (!roomName) {
+                addMessage('❌ Please enter room name', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8080/api/rooms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        name: roomName,
+                        isPrivate: isPrivate
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentRoomData = data.data;
+                    currentRoomId = data.data.id;
+                    
+                    updateRoomInfo();
+                    subscribeToRoom(currentRoomId);
+                    
+                    addMessage(`✅ Room created: ${roomName} (ID: ${currentRoomId})`, 'success');
+                    if (isPrivate) {
+                        addMessage(`🔑 Private room code: ${data.data.joinCode}`, 'info');
+                    }
+                    
+                    // Update ready button visibility based on new room data
+                    updateReadyButtonVisibility();
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Failed to create room: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Create room error: ${error.message}`, 'error');
+            }
+        }
+
+        async function quickPlay() {
+            try {
+                const response = await fetch('http://localhost:8080/api/rooms/quick-play', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentRoomData = data.data;
+                    currentRoomId = data.data.id;
+                    
+                    updateRoomInfo();
+                    subscribeToRoom(currentRoomId);
+                    
+                    addMessage(`⚡ Quick play room ready: ${currentRoomData.name}`, 'success');
+                    
+                    // Update ready button visibility based on new room data
+                    updateReadyButtonVisibility();
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Quick play failed: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Quick play error: ${error.message}`, 'error');
+            }
+        }
+
+        async function findRoomByCode() {
+            const joinCode = document.getElementById('joinCode').value;
+            if (!joinCode) {
+                addMessage('❌ Please enter join code', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:8080/api/rooms/find-by-code/${joinCode}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addMessage(`🔍 Found room: ${data.data.name} (${data.data.players.length}/2 players)`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Room not found: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Find room error: ${error.message}`, 'error');
+            }
+        }
+
+        async function joinRoomByCode() {
+            const joinCode = document.getElementById('joinCode').value;
+            if (!joinCode) {
+                addMessage('❌ Please enter join code', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8080/api/rooms/join-by-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        joinCode: joinCode
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentRoomData = data.data;
+                    currentRoomId = data.data.id;
+                    
+                    updateRoomInfo();
+                    subscribeToRoom(currentRoomId);
+                    
+                    addMessage(`🚪 Joined room: ${data.data.name}`, 'success');
+                    
+                    // Update ready button visibility based on new room data
+                    updateReadyButtonVisibility();
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Failed to join room: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Join room error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadPublicRooms() {
+            try {
+                const response = await fetch('http://localhost:8080/api/rooms/public?size=10', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayPublicRooms(data.data.content);
+                    addMessage(`📋 Loaded ${data.data.content.length} public rooms`, 'info');
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Failed to load rooms: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Load rooms error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayPublicRooms(rooms) {
+            const roomsList = document.getElementById('roomsList');
+            roomsList.innerHTML = '';
+
+            if (rooms.length === 0) {
+                roomsList.innerHTML = '<div style="padding: 10px; text-align: center; color: #718096;">No public rooms available</div>';
+                return;
+            }
+
+            rooms.forEach(room => {
+                const roomElement = document.createElement('div');
+                roomElement.className = 'room-item';
+                roomElement.onclick = () => joinPublicRoom(room.id);
+                
+                roomElement.innerHTML = `
+                    <div class="room-name">${room.name}</div>
+                    <div class="room-details">${room.playerCount}/2 players • ${room.status}</div>
+                `;
+                
+                roomsList.appendChild(roomElement);
+            });
+        }
+
+        async function joinPublicRoom(roomId) {
+            try {
+                const response = await fetch(`http://localhost:8080/api/rooms/${roomId}/join`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentRoomData = data.data;
+                    currentRoomId = data.data.id;
+                    
+                    updateRoomInfo();
+                    subscribeToRoom(currentRoomId);
+                    
+                    addMessage(`🚪 Joined public room: ${data.data.name}`, 'success');
+                    
+                    // Update ready button visibility based on new room data
+                    updateReadyButtonVisibility();
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Failed to join room: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Join room error: ${error.message}`, 'error');
+            }
+        }
+
+        // Function to refresh room data from server
+        async function refreshRoomData() {
+            if (!currentRoomId || !authToken) return;
+            
+            try {
+                const response = await fetch(`http://localhost:8080/api/rooms/${currentRoomId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentRoomData = data.data;
+                    updateRoomInfo();
+                    updateReadyButtonVisibility();
+                    addMessage(`🔄 Room data refreshed. canMarkReady: ${currentRoomData.canMarkReady}`, 'info');
+                } else {
+                    addMessage('⚠️ Could not refresh room data', 'info');
+                }
+            } catch (error) {
+                addMessage(`⚠️ Error refreshing room data: ${error.message}`, 'info');
+            }
+        }
+
+        // Function to update ready button visibility based on canMarkReady
+        function updateReadyButtonVisibility() {
+            const readyBtn = document.getElementById('readyBtn');
+            
+            if (currentRoomData && currentRoomData.hasOwnProperty('canMarkReady')) {
+                if (currentRoomData.canMarkReady && !gameState.yourReady) {
+                    readyBtn.disabled = false;
+                    readyBtn.style.display = 'inline-block';
+                    addMessage(`✅ Ready button enabled (${currentRoomData.currentPlayerCount}/${currentRoomData.maxPlayers} players)`, 'success');
+                } else if (!currentRoomData.canMarkReady) {
+                    readyBtn.disabled = true;
+                    readyBtn.style.display = 'inline-block'; // Vẫn hiển thị nút nhưng disabled
+                    addMessage(`❌ Ready button disabled - insufficient players (${currentRoomData.currentPlayerCount}/${currentRoomData.maxPlayers})`, 'info');
+                } else if (gameState.yourReady) {
+                    readyBtn.disabled = true;
+                    readyBtn.style.display = 'inline-block';
+                    addMessage('✅ You are already ready', 'info');
+                }
+            } else {
+                // Fallback to old logic if canMarkReady is not available
+                readyBtn.disabled = gameState.yourReady;
+                readyBtn.style.display = 'inline-block';
+            }
+        }
+
+        // Function to fetch and join new rematch room
+        async function fetchAndJoinNewRematchRoom(newRoomId) {
+            try {
+                addMessage(`🔄 Fetching new rematch room details: ${newRoomId}`, 'info');
+                
+                // Fetch room details from server
+                const response = await fetch(`http://localhost:8080/api/rooms/${newRoomId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Update current room data
+                    currentRoomData = data.data;
+                    currentRoomId = data.data.id;
+                    
+                    addMessage(`✅ Successfully joined rematch room: ${currentRoomData.name}`, 'success');
+                    
+                    // Update UI with new room info
+                    updateRoomInfo();
+                    
+                    // Subscribe to new room events
+                    subscribeToRoom(currentRoomId);
+                    
+                    // Reset game state for new game
+                    resetGame();
+                    
+                    // Update ready button visibility for new room
+                    updateReadyButtonVisibility();
+                    
+                    // Enable rematch buttons state
+                    document.getElementById('requestRematchBtn').disabled = true;
+                    document.getElementById('acceptRematchBtn').disabled = true;
+                    
+                } else {
+                    const errorData = await response.json();
+                    addMessage(`❌ Failed to fetch rematch room: ${errorData.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Error fetching rematch room: ${error.message}`, 'error');
+            }
+        }
+
+        // WebSocket room functions
+        function subscribeToRoom(roomId) {
+            if (!stompClient || !isConnected) return;
+
+            // Subscribe to room chat
+            stompClient.subscribe(`/topic/room/${roomId}/chat`, function(message) {
+                const chatData = JSON.parse(message.body);
+                addChatMessage(chatData.senderName || 'Player', chatData.content);
+            });
+
+            // Subscribe to room updates
+            stompClient.subscribe(`/topic/room/${roomId}/updates`, function(message) {
+                const updateData = JSON.parse(message.body);
+                addMessage(`🔔 Room Update: ${updateData.updateType}`, 'websocket');
+                handleRoomUpdate(updateData);
+            });
+
+            // Subscribe to room status
+            stompClient.subscribe(`/topic/room/${roomId}/status`, function(message) {
+                const statusData = JSON.parse(message.body);
+                addMessage(`📊 Room Status: ${JSON.stringify(statusData)}`, 'websocket');
+            });
+
+            // Subscribe to game moves
+            stompClient.subscribe(`/topic/game/${roomId}/move`, function(message) {
+                const moveData = JSON.parse(message.body);
+                handleGameMove(moveData);
+            });
+
+            // Subscribe to game end
+            stompClient.subscribe(`/topic/game/${roomId}/end`, function(message) {
+                const endData = JSON.parse(message.body);
+                handleGameEnd(endData);
+            });
+
+            // Subscribe to global room updates (for room list refresh)
+            stompClient.subscribe(`/topic/room-updates`, function(message) {
+                const updateData = JSON.parse(message.body);
+                addMessage(`🌐 Global Room Update: ${updateData.updateType}`, 'websocket');
+                // Optionally refresh room list here if needed
+            });
+
+            addMessage(`📡 Subscribed to room ${roomId} events`, 'success');
+            enableGameButtons();
+            
+            // Update ready button visibility based on current room data
+            updateReadyButtonVisibility();
+            
+            // Check if room is already in PLAYING state and initialize game
+            if (currentRoomData && currentRoomData.status === 'PLAYING') {
+                addMessage('🔄 Room already in PLAYING state, initializing game...', 'info');
+                gameActive = true;
+                gameState.gameActive = true;
+                gameState.yourReady = true;
+                gameState.opponentReady = true;
+                
+                // Get player symbol immediately for already playing game
+                setTimeout(() => {
+                    getPlayerSymbolAndSetTurn();
+                }, 100);
+                
+                updatePlayerStatus();
+                updateGameInfo();
+            }
+        }
+
+        function handleRoomUpdate(updateData) {
+            console.log('Room update received:', updateData);
+            
+            // Update room data if provided in the update
+            if (updateData.roomData) {
+                currentRoomData = updateData.roomData;
+                updateRoomInfo();
+                updateReadyButtonVisibility();
+            }
+            
+            switch (updateData.updateType) {
+                case 'PLAYER_JOINED':
+                    gameState.playerCount = Math.min(2, gameState.playerCount + 1);
+                    showNotification('Player joined the room');
+                    // Refresh room data to get updated canMarkReady status
+                    refreshRoomData();
+                    break;
+                case 'PLAYER_LEFT':
+                    gameState.playerCount = Math.max(0, gameState.playerCount - 1);
+                    showNotification('Player left the room');
+                    // Refresh room data to get updated canMarkReady status
+                    refreshRoomData();
+                    break;
+                case 'PLAYER_READY':
+                    console.log('Player ready update:', updateData);
+                    if (updateData.readyCount) {
+                        const readyCount = updateData.readyCount;
+                        console.log(`Ready count: ${readyCount}, yourReady: ${gameState.yourReady}`);
+                        gameState.opponentReady = readyCount > (gameState.yourReady ? 0 : 1);
+                    }
+                    showNotification(`Player marked as ready!`);
+                    updatePlayerStatus();
+                    // Refresh room data to get updated canMarkReady status
+                    refreshRoomData();
+                    break;
+                case 'GAME_STARTED':
+                    gameState.gameActive = true;
+                    gameState.yourReady = true;
+                    gameState.opponentReady = true;
+                    gameActive = true;
+                    
+                    // Clear the board for a new game
+                    resetGame();
+                    gameActive = true; // resetGame sets this to false, so we set it back
+                    
+                    // Initialize turn - get player symbol and set turn (with small delay)
+                    setTimeout(() => {
+                        getPlayerSymbolAndSetTurn();
+                    }, 500);
+                    
+                    showNotification('🎮 Game started! Good luck!');
+                    updatePlayerStatus();
+                    break;
+                case 'GAME_ENDED_BY_SURRENDER':
+                    gameState.gameActive = false;
+                    gameState.canRematch = true;
+                    gameActive = false;
+                    showNotification('🏳️ Game ended by surrender');
+                    break;
+                case 'GAME_ENDED_BY_LEAVE':
+                    gameState.gameActive = false;
+                    gameState.canRematch = false;
+                    gameActive = false;
+                    showNotification('🚪 Game ended - player left');
+                    break;
+                case 'REMATCH_REQUESTED':
+                    showNotification('🔄 Rematch requested!');
+                    document.getElementById('acceptRematchBtn').disabled = false;
+                    break;
+                case 'REMATCH_ACCEPTED':
+                    showNotification('✅ Rematch accepted!');
+                    break;
+                case 'REMATCH_CREATED':
+                    if (updateData.newRoomId) {
+                        showNotification(`🆕 New rematch room: ${updateData.newRoomId}`);
+                        // Fetch new room details from server
+                        fetchAndJoinNewRematchRoom(updateData.newRoomId);
+                    }
+                    break;
+            }
+            updateGameInfo();
+        }
+
+        // Game functions
+        function initializeGameBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 15; row++) {
+                for (let col = 0; col < 15; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => makeMove(row, col);
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function makeMove(row, col) {
+            console.log(`makeMove called: row=${row}, col=${col}, gameActive=${gameActive}, isMyTurn=${isMyTurn}, cell="${gameBoard[row][col]}"`);
+            
+            if (!gameActive || !isMyTurn || gameBoard[row][col] !== '') {
+                console.log('Move blocked:', { gameActive, isMyTurn, cellOccupied: gameBoard[row][col] !== '' });
+                return;
+            }
+
+            const moveData = {
+                xPosition: row,  // xPosition is row index (first matrix dimension)
+                yPosition: col   // yPosition is col index (second matrix dimension)
+            };
+
+            if (stompClient && isConnected && currentRoomId) {
+                console.log('Sending move data:', moveData);
+                stompClient.send(`/app/game/${currentRoomId}/move`, {}, JSON.stringify(moveData));
+                addMessage(`🎯 Move sent: (${row}, ${col})`, 'sent');
+            } else {
+                console.log('Cannot send move:', { stompClient: !!stompClient, isConnected, currentRoomId });
+            }
+        }
+
+        function handleGameMove(moveData) {
+            console.log('Received move data:', moveData);
+            
+            const row = moveData.xPosition; // xPosition is row in backend
+            const col = moveData.yPosition; // yPosition is col in backend
+            const symbol = moveData.playerSymbol; // Use playerSymbol from backend
+            
+            // Update local game board
+            if (moveData.board) {
+                // Update entire board from server if provided
+                gameBoard = moveData.board.map(row => 
+                    row.map(cell => {
+                        if (cell === 1) return 'X';
+                        if (cell === 2) return 'O';
+                        return '';
+                    })
+                );
+                updateBoardDisplay();
+            } else {
+                // Update single cell
+                gameBoard[row][col] = symbol;
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                if (cell) {
+                    cell.textContent = symbol;
+                    cell.className = `cell ${symbol.toLowerCase()}`;
+                }
+            }
+            
+            // Handle turn management properly
+            if (moveData.nextTurnPlayerId) {
+                // Check if it's our turn based on user ID comparison
+                isMyTurn = (moveData.nextTurnPlayerId === currentUserId);
+            } else {
+                // Fallback: simple turn toggle
+                isMyTurn = !isMyTurn;
+            }
+            
+            // Handle game state
+            if (moveData.gameState === 'FINISHED') {
+                gameActive = false;
+                gameState.gameActive = false;
+                
+                if (moveData.winnerId) {
+                    const isWinner = (moveData.winnerId === currentUserId);
+                    const message = isWinner ? '🏆 You won!' : '😢 You lost!';
+                    showNotification(message);
+                    addMessage(`🏆 Game ended! Winner: Player ${symbol}`, 'success');
+                } else {
+                    showNotification('🤝 Game ended in a draw!');
+                    addMessage('🤝 Game ended in a draw!', 'info');
+                }
+                
+                document.getElementById('requestRematchBtn').disabled = false;
+            }
+            
+            updateGameInfo();
+            addMessage(`🎯 Move: Player ${symbol} at (${row}, ${col})`, 'success');
+        }
+
+        function handleGameEnd(endData) {
+            gameActive = false;
+            gameState.gameActive = false;
+            gameState.canRematch = true;
+            
+            if (endData.winner) {
+                showNotification(`🏆 Game Over! Winner: ${endData.winner}`);
+                addMessage(`🏆 Game ended! Winner: ${endData.winner}`, 'success');
+            } else {
+                showNotification('🤝 Game ended in a draw!');
+                addMessage('🤝 Game ended in a draw!', 'info');
+            }
+            
+            updateGameInfo();
+            document.getElementById('requestRematchBtn').disabled = false;
+        }
+
+        // Update the entire board display from the gameBoard array
+        function updateBoardDisplay() {
+            for (let row = 0; row < 15; row++) {
+                for (let col = 0; col < 15; col++) {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    if (cell) {
+                        const symbol = gameBoard[row][col];
+                        cell.textContent = symbol;
+                        if (symbol) {
+                            cell.className = `cell ${symbol.toLowerCase()}`;
+                        } else {
+                            cell.className = 'cell';
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get player symbol and initialize turn
+        async function getPlayerSymbolAndSetTurn() {
+            if (!currentRoomId || !authToken) return;
+            
+            try {
+                const response = await fetch(`http://localhost:8080/api/v1/games/${currentRoomId}/player-symbol`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    mySymbol = data.data;
+                    
+                    // In Caro, X typically goes first
+                    isMyTurn = (mySymbol === 'X');
+                    
+                    addMessage(`🎯 You are playing as: ${mySymbol}`, 'info');
+                    addMessage(`🎮 ${isMyTurn ? "It's your turn!" : "Opponent's turn"}`, 'info');
+                    
+                    updateGameInfo();
+                    
+                    // Try to get current board state if game is already active
+                    if (gameActive) {
+                        getCurrentBoard();
+                    }
+                } else {
+                    addMessage('❌ Failed to get player symbol', 'error');
+                    // Default fallback
+                    isMyTurn = true;
+                }
+            } catch (error) {
+                addMessage(`❌ Error getting player symbol: ${error.message}`, 'error');
+                // Default fallback
+                isMyTurn = true;
+            }
+        }
+        
+        // Get current board state
+        async function getCurrentBoard() {
+            if (!currentRoomId || !authToken) return;
+            
+            try {
+                const response = await fetch(`http://localhost:8080/api/v1/games/${currentRoomId}/board`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const board = data.data;
+                    
+                    // Update game board from server
+                    gameBoard = board.map(row => 
+                        row.map(cell => {
+                            if (cell === 1) return 'X';
+                            if (cell === 2) return 'O';
+                            return '';
+                        })
+                    );
+                    
+                    updateBoardDisplay();
+                    addMessage('📋 Board state loaded from server', 'success');
+                } else {
+                    addMessage('⚠️ Could not load board state', 'info');
+                }
+            } catch (error) {
+                addMessage(`⚠️ Error loading board: ${error.message}`, 'info');
+            }
+        }
+
+        // WebSocket game control functions
+        function markReady() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            // Prevent multiple ready calls
+            if (gameState.yourReady) {
+                addMessage('⚠️ You are already ready', 'info');
+                return;
+            }
+            
+            // Disable button immediately
+            document.getElementById('readyBtn').disabled = true;
+            
+            stompClient.send(`/app/room/${currentRoomId}/ready`, {}, JSON.stringify({}));
+            gameState.yourReady = true;
+            updatePlayerStatus();
+            addMessage('✅ Marked as ready', 'sent');
+        }
+
+        function getRoomStatus() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            stompClient.send(`/app/room/${currentRoomId}/status`, {}, JSON.stringify({}));
+            addMessage('📊 Status request sent', 'sent');
+        }
+        
+        // Debug function to check current game state
+        function debugGameState() {
+            console.log('=== GAME STATE DEBUG ===');
+            console.log('currentRoomId:', currentRoomId);
+            console.log('currentUserId:', currentUserId);
+            console.log('gameActive:', gameActive);
+            console.log('isMyTurn:', isMyTurn);
+            console.log('mySymbol:', mySymbol);
+            console.log('gameState:', gameState);
+            console.log('authToken available:', !!authToken);
+            console.log('stompClient connected:', stompClient && isConnected);
+            addMessage(`🔍 Debug: gameActive=${gameActive}, isMyTurn=${isMyTurn}, mySymbol=${mySymbol}`, 'info');
+        }
+
+        function surrenderGame() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            if (!confirm('Are you sure you want to surrender?')) return;
+            
+            stompClient.send(`/app/room/${currentRoomId}/surrender`, {}, JSON.stringify({}));
+            addMessage('🏳️ Surrender sent', 'sent');
+        }
+
+        function leaveRoom() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            if (!confirm('Are you sure you want to leave the room?')) return;
+            
+            stompClient.send(`/app/room/${currentRoomId}/leave`, {}, JSON.stringify({}));
+            addMessage('🚪 Leave room sent', 'sent');
+            
+            // Reset local state
+            currentRoomId = null;
+            currentRoomData = null;
+            resetGame();
+            updateRoomInfo();
+            disableGameButtons();
+        }
+
+        function sendChatMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            
+            if (!message || !stompClient || !isConnected || !currentRoomId) return;
+            
+            const chatData = {
+                content: message
+            };
+            
+            stompClient.send(`/app/room/${currentRoomId}/chat`, {}, JSON.stringify(chatData));
+            chatInput.value = '';
+            addMessage(`💬 Chat sent: ${message}`, 'sent');
+        }
+
+        function requestRematch() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            stompClient.send(`/app/room/${currentRoomId}/rematch/request`, {}, JSON.stringify({}));
+            addMessage('🔄 Rematch request sent', 'sent');
+            document.getElementById('requestRematchBtn').disabled = true;
+        }
+
+        function acceptRematch() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            stompClient.send(`/app/room/${currentRoomId}/rematch/accept`, {}, JSON.stringify({}));
+            addMessage('✅ Rematch accepted', 'sent');
+            document.getElementById('acceptRematchBtn').disabled = true;
+        }
+
+        function completeGame() {
+            if (!stompClient || !isConnected || !currentRoomId) return;
+            
+            // This would normally be called automatically by the game logic
+            // For testing purposes, we can manually complete a game
+            const winnerId = prompt('Enter winner ID (for testing):');
+            const loserId = prompt('Enter loser ID (for testing):');
+            
+            if (winnerId && loserId) {
+                const gameResult = {
+                    winnerId: parseInt(winnerId),
+                    loserId: parseInt(loserId)
+                };
+                
+                stompClient.send(`/app/room/${currentRoomId}/complete`, {}, JSON.stringify(gameResult));
+                addMessage('🏁 Game completion sent', 'sent');
+            }
+        }
+
+        // UI helper functions
+        function addMessage(message, type = 'info') {
+            const messages = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messages.appendChild(messageElement);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function addChatMessage(sender, message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        function updateRoomInfo() {
+            document.getElementById('currentRoomId').textContent = currentRoomId || 'None';
+            document.getElementById('currentRoomName').textContent = currentRoomData?.name || 'None';
+            document.getElementById('roomStatus').textContent = currentRoomData?.status || 'None';
+            document.getElementById('playerCount').textContent = currentRoomData ? 
+                `${currentRoomData.players?.length || currentRoomData.currentPlayerCount || 0}/${currentRoomData.maxPlayers || 2}` : '0/2';
+            
+            // Display canMarkReady status for debugging
+            if (currentRoomData && currentRoomData.hasOwnProperty('canMarkReady')) {
+                addMessage(`🔍 Room Info - canMarkReady: ${currentRoomData.canMarkReady}, gameState: ${currentRoomData.gameState}, players: ${currentRoomData.currentPlayerCount}/${currentRoomData.maxPlayers}`, 'info');
+            }
+        }
+
+        function updatePlayerStatus() {
+            document.getElementById('yourStatus').textContent = gameState.yourReady ? 'Ready' : 'Not Ready';
+            document.getElementById('opponentStatus').textContent = gameState.opponentReady ? 'Ready' : 'Not Ready';
+            
+            const player1Card = document.getElementById('player1Card');
+            const player2Card = document.getElementById('player2Card');
+            
+            player1Card.className = gameState.yourReady ? 'player-card ready' : 'player-card';
+            player2Card.className = gameState.opponentReady ? 'player-card ready' : 'player-card';
+            
+            if (isMyTurn && gameActive) {
+                player1Card.classList.add('active');
+                player2Card.classList.remove('active');
+            } else if (!isMyTurn && gameActive) {
+                player1Card.classList.remove('active');
+                player2Card.classList.add('active');
+            }
+        }
+
+        function updateGameInfo() {
+            const gameInfo = document.getElementById('gameInfo');
+            
+            if (!currentRoomId) {
+                gameInfo.textContent = 'No room joined';
+            } else if (!gameActive) {
+                if (gameState.yourReady && gameState.opponentReady) {
+                    gameInfo.textContent = 'Game starting...';
+                } else {
+                    gameInfo.textContent = 'Waiting for players to be ready...';
+                    // Update ready button visibility when game info changes
+                    updateReadyButtonVisibility();
+                }
+            } else {
+                gameInfo.textContent = isMyTurn ? 'Your turn' : "Opponent's turn";
+            }
+        }
+
+        function resetGame() {
+            gameBoard = Array(15).fill().map(() => Array(15).fill(''));
+            gameActive = false;
+            isMyTurn = false;
+            mySymbol = '';
+            gameState.gameActive = false;
+            gameState.yourReady = false;
+            gameState.opponentReady = false;
+            gameState.canRematch = false;
+            
+            initializeGameBoard();
+            updatePlayerStatus();
+            updateGameInfo();
+        }
+
+        function enableRoomButtons() {
+            document.getElementById('createRoomBtn').disabled = false;
+            document.getElementById('quickPlayBtn').disabled = false;
+            document.getElementById('findRoomBtn').disabled = false;
+            document.getElementById('joinByCodeBtn').disabled = false;
+            document.getElementById('loadRoomsBtn').disabled = false;
+        }
+
+        function disableRoomButtons() {
+            document.getElementById('createRoomBtn').disabled = true;
+            document.getElementById('quickPlayBtn').disabled = true;
+            document.getElementById('findRoomBtn').disabled = true;
+            document.getElementById('joinByCodeBtn').disabled = true;
+            document.getElementById('loadRoomsBtn').disabled = true;
+            disableGameButtons();
+        }
+
+        function enableGameButtons() {
+            document.getElementById('statusBtn').disabled = false;
+            document.getElementById('debugBtn').disabled = false;
+            document.getElementById('leaveBtn').disabled = false;
+            // Don't enable ready button here - let updateReadyButtonVisibility handle it
+            updateReadyButtonVisibility();
+        }
+
+        function disableGameButtons() {
+            document.getElementById('readyBtn').disabled = true;
+            document.getElementById('statusBtn').disabled = true;
+            document.getElementById('debugBtn').disabled = true;
+            document.getElementById('surrenderBtn').disabled = true;
+            document.getElementById('leaveBtn').disabled = true;
+            document.getElementById('requestRematchBtn').disabled = true;
+            document.getElementById('acceptRematchBtn').disabled = true;
+            document.getElementById('completeBtn').disabled = true;
+        }
+
+        function disableAllButtons() {
+            disableRoomButtons();
+            disableGameButtons();
+        }
+
+        // Auto-enable surrender button when game is active
+        setInterval(() => {
+            if (gameActive && currentRoomId) {
+                document.getElementById('surrenderBtn').disabled = false;
+            } else {
+                document.getElementById('surrenderBtn').disabled = true;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

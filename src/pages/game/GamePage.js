@@ -1,142 +1,366 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UserContext } from "../../context/UserContext";
 import {
+  initializeWebSocket,
+  isWebSocketConnected,
   joinRoomWS,
   subscribeToRoomUpdates,
   subscribeToRoomChat,
   subscribeToGameMoves,
   subscribeToGameEnd,
   markPlayerReady,
-  startGame,
   leaveRoomWS,
   surrenderGame,
   requestRematch,
   acceptRematch,
   sendChatMessage,
-} from "../../services/WebsocketService";
+  makeGameMoveWS,
+} from "../../services/WebSocketService";
 import {
   makeMove,
   getCurrentBoard,
   getPlayerSymbol,
+  getRoomInfo,
 } from "../../services/CaroGameService";
 import { toast } from "react-toastify";
-import "./GamePage.css";
+import "./index.css";
 
 const GamePage = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Core game state
   const [roomId, setRoomId] = useState(null);
-  const [board, setBoard] = useState(null);
-  const [playerSymbol, setPlayerSymbol] = useState(null);
-  const [currentTurn, setCurrentTurn] = useState(null);
+  const [board, setBoard] = useState(
+    Array(15)
+      .fill()
+      .map(() => Array(15).fill(0))
+  );
+  const [playerSymbol, setPlayerSymbol] = useState("");
+  const [currentTurn, setCurrentTurn] = useState("X");
   const [gameStatus, setGameStatus] = useState("waiting");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [wsConnected, setWsConnected] = useState(false);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [isMakingMove, setIsMakingMove] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  // Extract roomId from URL query params or state
+  // Extract roomId from URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const roomIdFromUrl = params.get("roomId");
+
     if (roomIdFromUrl) {
       setRoomId(roomIdFromUrl);
     } else {
-      toast.error("Không tìm thấy ID phòng. Vui lòng tham gia phòng trước!");
+      console.error("No room ID found. Redirecting to lobby.");
+      toast.error("Không tìm thấy ID phòng. Chuyển hướng về lobby!");
       navigate("/lobby");
     }
   }, [location, navigate]);
 
-  // Initialize WebSocket subscriptions and fetch initial game state
+  // Monitor WebSocket connection
+  useEffect(() => {
+    const checkConnection = setInterval(() => {
+      setWsConnected(isWebSocketConnected());
+    }, 1000);
+    return () => clearInterval(checkConnection);
+  }, []);
+
+  // Initialize game and WebSocket subscriptions
   useEffect(() => {
     if (!roomId || !user) return;
 
     const initGame = async () => {
       try {
-        // Join room via WebSocket
+        setIsConnecting(true);
+        // Initialize WebSocket
+        await initializeWebSocket();
+        setWsConnected(true);
+        setIsConnecting(false);
+
+        // Join room
         await joinRoomWS(roomId);
 
-        // Fetch initial board state
-        const boardData = await getCurrentBoard(roomId);
-        setBoard(boardData);
+        // Fetch initial game data
+        try {
+          const [boardData, symbol, roomInfo] = await Promise.all([
+            getCurrentBoard(roomId).catch(() =>
+              Array(15)
+                .fill()
+                .map(() => Array(15).fill(0))
+            ),
+            getPlayerSymbol(roomId).catch(() => "X"),
+            getRoomInfo(roomId),
+          ]);
 
-        // Fetch player symbol
-        const symbol = await getPlayerSymbol(roomId);
-        setPlayerSymbol(symbol);
+          // Validate board data
+          if (
+            !boardData ||
+            boardData.length !== 15 ||
+            boardData[0].length !== 15
+          ) {
+            console.error("Invalid board size received:", boardData);
+            toast.error("Dữ liệu bàn cờ không hợp lệ!");
+            setBoard(
+              Array(15)
+                .fill()
+                .map(() => Array(15).fill(0))
+            );
+          } else {
+            setBoard(boardData);
+          }
 
-        // Subscribe to room updates
-        subscribeToRoomUpdates(roomId, (message) => {
-          console.log("Room update:", message);
-          setGameStatus(message.status || "waiting");
-        });
-
-        // Subscribe to game moves
-        subscribeToGameMoves(roomId, async (move) => {
-          console.log("Move received:", move);
-          setCurrentTurn(move.nextTurn);
-          const updatedBoard = await getCurrentBoard(roomId);
-          setBoard(updatedBoard);
-        });
-
-        // Subscribe to game end
-        subscribeToGameEnd(roomId, (result) => {
-          console.log("Game ended:", result);
-          setGameStatus("ended");
-          toast.info(
-            `Trò chơi kết thúc! Kết quả: ${result.outcome || "Không xác định"}`
+          setPlayerSymbol(symbol);
+          setGameStatus(
+            roomInfo.gameState === "IN_PROGRESS" ? "playing" : "waiting"
           );
-          if (result.winner) {
-            toast.success(`Người thắng: ${result.winner}`);
+          setIsPlayerReady(
+            roomInfo.players?.some((p) => p.userId === user.id && p.ready) ||
+              false
+          );
+        } catch (error) {
+          console.error("Initial data fetch failed:", error);
+          toast.error("Không thể tải dữ liệu game ban đầu.");
+        }
+
+        // Set up WebSocket subscriptions
+        const roomSub = await subscribeToRoomUpdates(
+          roomId,
+          async (message) => {
+            try {
+              if (message.updateType === "GAME_STARTED") {
+                // Fetch critical game data on game start
+                try {
+                  const [boardData, symbol, roomInfo] = await Promise.all([
+                    getCurrentBoard(roomId).catch(() =>
+                      Array(15)
+                        .fill()
+                        .map(() => Array(15).fill(0))
+                    ),
+                    getPlayerSymbol(roomId).catch(() => playerSymbol || "X"),
+                    getRoomInfo(roomId).catch(() => ({})),
+                  ]);
+
+                  if (
+                    boardData &&
+                    boardData.length === 15 &&
+                    boardData[0].length === 15
+                  ) {
+                    setBoard(boardData);
+                  } else {
+                    console.error(
+                      "Invalid board size on game start:",
+                      boardData
+                    );
+                    setBoard(
+                      message.board &&
+                        message.board.length === 15 &&
+                        message.board[0].length === 15
+                        ? message.board
+                        : Array(15)
+                            .fill()
+                            .map(() => Array(15).fill(0))
+                    );
+                  }
+
+                  setPlayerSymbol(symbol);
+                  setGameStatus("playing");
+                  setCurrentTurn(message.currentTurn || "X");
+                  setIsPlayerReady(
+                    roomInfo.players?.some(
+                      (p) => p.userId === user.id && p.ready
+                    ) || true
+                  );
+                  toast.success("Trò chơi đã bắt đầu!");
+                } catch (error) {
+                  console.error("Failed to fetch game data on start:", error);
+                  toast.error("Không thể tải dữ liệu game. Vui lòng thử lại!");
+                }
+              } else if (message.updateType === "PLAYER_READY") {
+                setIsPlayerReady(
+                  message.playerId === user.id || message.readyCount > 0
+                );
+                if (message.readyCount === 2) {
+                  setGameStatus("starting");
+                  setTimeout(() => setGameStatus("playing"), 1000);
+                }
+              } else if (message.updateType === "GAME_ENDED") {
+                setGameStatus("ended");
+                toast.info(
+                  `Trò chơi đã kết thúc: ${message.outcome || "Không xác định"}`
+                );
+              }
+              if (message.currentTurn) {
+                setCurrentTurn(message.currentTurn);
+              }
+            } catch (error) {
+              console.error("Error processing room update:", error);
+              toast.error("Lỗi xử lý cập nhật phòng!");
+            }
+          }
+        );
+
+        const moveSub = await subscribeToGameMoves(roomId, (move) => {
+          try {
+            if (move.xPosition !== undefined && move.yPosition !== undefined) {
+              const {
+                xPosition,
+                yPosition,
+                playerSymbol: moveSymbol,
+                board: newBoard,
+              } = move;
+              if (
+                newBoard &&
+                newBoard.length === 15 &&
+                newBoard[0].length === 15
+              ) {
+                setBoard(newBoard);
+              } else {
+                // Fallback to updating board locally if server board is invalid
+                setBoard((prevBoard) =>
+                  prevBoard.map((row, i) =>
+                    row.map((cell, j) =>
+                      i === xPosition && j === yPosition
+                        ? moveSymbol === "X"
+                          ? 1
+                          : 2
+                        : cell
+                    )
+                  )
+                );
+              }
+              setCurrentTurn(
+                move.nextTurnPlayerId
+                  ? move.moveNumber % 2 === 0
+                    ? "O"
+                    : "X"
+                  : moveSymbol === "X"
+                  ? "O"
+                  : "X"
+              );
+            } else {
+              console.error("Invalid move data:", move);
+              toast.error("Dữ liệu nước đi không hợp lệ!");
+            }
+          } catch (error) {
+            console.error("Error processing move:", error);
+            toast.error("Lỗi xử lý nước đi!");
           }
         });
 
-        // Subscribe to room chat
-        subscribeToRoomChat(roomId, (message) => {
-          setChatMessages((prev) => [...prev, message]);
+        const endSub = await subscribeToGameEnd(roomId, (result) => {
+          try {
+            setGameStatus("ended");
+            toast.info(
+              `Trò chơi kết thúc: ${result.outcome || "Không xác định"}`
+            );
+          } catch (error) {
+            console.error("Error processing game end:", error);
+            toast.error("Lỗi xử lý kết thúc game!");
+          }
         });
 
-        // Mark player as ready
-        await markPlayerReady(roomId);
+        const chatSub = await subscribeToRoomChat(roomId, (message) => {
+          try {
+            setChatMessages((prev) => [...prev, message]);
+          } catch (error) {
+            console.error("Error processing chat message:", error);
+            toast.error("Lỗi xử lý tin nhắn chat!");
+          }
+        });
+
+        setSubscriptions([roomSub, moveSub, endSub, chatSub]);
       } catch (error) {
-        console.error("Error initializing game:", error);
-        toast.error(error.message || "Không thể khởi tạo trò chơi!");
+        console.error("Game initialization failed:", error);
+        setWsConnected(false);
+        setIsConnecting(false);
+        toast.error("Không thể khởi tạo game. Vui lòng thử lại!");
       }
     };
 
     initGame();
 
-    // Cleanup WebSocket subscriptions on unmount
     return () => {
-      if (roomId) {
-        leaveRoomWS(roomId).catch((error) =>
-          console.error("Error leaving room:", error)
-        );
-      }
+      subscriptions.forEach((sub) => sub?.unsubscribe?.());
+      leaveRoomWS(roomId).catch((error) =>
+        console.error("Error leaving room:", error)
+      );
     };
   }, [roomId, user]);
 
   // Handle player move
-  const handleMove = async (x, y) => {
-    if (gameStatus !== "playing" || playerSymbol !== currentTurn) {
-      toast.error("Không phải lượt của bạn hoặc trò chơi chưa bắt đầu!");
-      return;
-    }
+  const handleMove = useCallback(
+    async (row, col) => {
+      if (
+        isMakingMove ||
+        gameStatus !== "playing" ||
+        playerSymbol !== currentTurn ||
+        board[row][col] !== 0 ||
+        row < 0 ||
+        row >= 15 ||
+        col < 0 ||
+        col >= 15
+      ) {
+        toast.warn("Nước đi không hợp lệ!");
+        return;
+      }
 
-    try {
-      await makeMove(roomId, { x, y });
-      const updatedBoard = await getCurrentBoard(roomId);
-      setBoard(updatedBoard);
-    } catch (error) {
-      console.error("Error making move:", error);
-      toast.error(error.message || "Không thể thực hiện nước đi!");
-    }
-  };
+      setIsMakingMove(true);
+      try {
+        // Optimistic update
+        const newBoard = board.map((r) => [...r]);
+        newBoard[row][col] = playerSymbol === "X" ? 1 : 2;
+        setBoard(newBoard);
+        setCurrentTurn(playerSymbol === "X" ? "O" : "X");
+
+        const response = await makeMove(roomId, { x: row, y: col }, true);
+        // Validate server response
+        if (
+          response.board &&
+          response.board.length === 15 &&
+          response.board[0].length === 15
+        ) {
+          setBoard(response.board);
+        } else {
+          console.error("Invalid board size in move response:", response.board);
+          toast.warn("Dữ liệu bàn cờ từ server không hợp lệ");
+        }
+        if (response.xPosition !== row || response.yPosition !== col) {
+          console.error("Move coordinates mismatch:", response);
+          toast.warn("Tọa độ nước đi không khớp");
+        }
+        if (response.gameState === "ENDED") {
+          setGameStatus("ended");
+          toast.info(
+            `Trò chơi kết thúc: ${response.gameResult || "Không xác định"}`
+          );
+        }
+      } catch (error) {
+        console.error("Move failed:", error);
+        // Revert optimistic update instead of making another API call
+        const revertedBoard = board.map((r) => [...r]);
+        revertedBoard[row][col] = 0; // Revert the move
+        setBoard(revertedBoard);
+        setCurrentTurn(playerSymbol); // Revert turn
+        toast.error("Nước đi thất bại!");
+      } finally {
+        setIsMakingMove(false);
+      }
+    },
+    [board, gameStatus, playerSymbol, currentTurn, roomId, isMakingMove]
+  );
 
   // Handle sending chat message
-  const handleSendChat = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
+  const handleSendChat = useCallback(async () => {
+    if (!chatInput.trim() || !isWebSocketConnected()) {
+      toast.warn("Vui lòng nhập tin nhắn và kiểm tra kết nối!");
+      return;
+    }
     try {
       await sendChatMessage(roomId, {
         content: chatInput,
@@ -145,19 +369,19 @@ const GamePage = () => {
       setChatInput("");
     } catch (error) {
       console.error("Error sending chat:", error);
-      toast.error(error.message || "Không thể gửi tin nhắn!");
+      toast.error("Gửi tin nhắn thất bại!");
     }
-  };
+  }, [chatInput, roomId, user]);
 
-  // Handle starting the game
-  const handleStartGame = async () => {
+  // Handle marking player ready
+  const handleMarkReady = async () => {
     try {
-      await startGame(roomId);
-      setGameStatus("playing");
-      toast.success("Trò chơi đã bắt đầu!");
+      await markPlayerReady(roomId);
+      setIsPlayerReady(true);
+      toast.success("Bạn đã sẵn sàng!");
     } catch (error) {
-      console.error("Error starting game:", error);
-      toast.error(error.message || "Không thể bắt đầu trò chơi!");
+      console.error("Error marking ready:", error);
+      toast.error("Đánh dấu sẵn sàng thất bại!");
     }
   };
 
@@ -165,11 +389,12 @@ const GamePage = () => {
   const handleSurrender = async () => {
     try {
       await surrenderGame(roomId);
+      setGameStatus("ended");
       toast.info("Bạn đã đầu hàng!");
       navigate("/lobby");
     } catch (error) {
       console.error("Error surrendering:", error);
-      toast.error(error.message || "Không thể đầu hàng!");
+      toast.error("Đầu hàng thất bại!");
     }
   };
 
@@ -180,7 +405,7 @@ const GamePage = () => {
       toast.success("Yêu cầu tái đấu đã được gửi!");
     } catch (error) {
       console.error("Error requesting rematch:", error);
-      toast.error(error.message || "Không thể yêu cầu tái đấu!");
+      toast.error("Yêu cầu tái đấu thất bại!");
     }
   };
 
@@ -188,89 +413,246 @@ const GamePage = () => {
   const handleAcceptRematch = async () => {
     try {
       await acceptRematch(roomId);
-      toast.success("Đã chấp nhận tái đấu!");
       setGameStatus("waiting");
-      setBoard(null);
+      setBoard(
+        Array(15)
+          .fill()
+          .map(() => Array(15).fill(0))
+      );
+      setIsPlayerReady(false);
+      toast.success("Đã chấp nhận tái đấu!");
     } catch (error) {
       console.error("Error accepting rematch:", error);
-      toast.error(error.message || "Không thể chấp nhận tái đấu!");
+      toast.error("Chấp nhận tái đấu thất bại!");
     }
   };
 
-  // Render the game board
-  const renderBoard = () => {
-    if (!board) return <p>Đang tải bàn cờ...</p>;
+  // Handle leaving room
+  const handleLeaveRoom = async () => {
+    try {
+      await leaveRoomWS(roomId);
+      toast.info("Bạn đã rời phòng!");
+      navigate("/lobby");
+    } catch (error) {
+      console.error("Error leaving room:", error);
+      toast.error("Rời phòng thất bại!");
+    }
+  };
 
-    const size = board.length || 20; // Default to 20x20 if not specified
+  // Render game board
+  const renderBoard = () => {
     return (
       <div className="game-board">
-        {Array.from({ length: size }).map((_, row) => (
+        {Array.from({ length: 15 }).map((_, row) => (
           <div key={row} className="board-row">
-            {Array.from({ length: size }).map((_, col) => (
-              <button
+            {Array.from({ length: 15 }).map((_, col) => (
+              <div
                 key={`${row}-${col}`}
-                className="board-cell"
+                className={`board-cell ${board[row][col] ? "filled" : ""} ${
+                  gameStatus === "playing" &&
+                  !isMakingMove &&
+                  board[row][col] === 0 &&
+                  playerSymbol === currentTurn
+                    ? "hoverable"
+                    : ""
+                } ${isMakingMove ? "disabled" : ""}`}
                 onClick={() => handleMove(row, col)}
-                disabled={gameStatus !== "playing" || board[row][col] !== null}
+                style={{
+                  cursor:
+                    isMakingMove ||
+                    gameStatus !== "playing" ||
+                    board[row][col] !== 0 ||
+                    playerSymbol !== currentTurn
+                      ? "default"
+                      : "pointer",
+                  opacity: isMakingMove ? 0.6 : 1,
+                }}
               >
-                {board[row][col] || ""}
-              </button>
+                {board[row][col] === 1 ? "X" : board[row][col] === 2 ? "O" : ""}
+              </div>
             ))}
           </div>
         ))}
+        {isMakingMove && (
+          <div
+            className="making-move-overlay"
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              background: "rgba(0,0,0,0.8)",
+              color: "white",
+              padding: "10px 20px",
+              borderRadius: "5px",
+              zIndex: 1000,
+            }}
+          >
+            Đang xử lý nước đi...
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className="game-page">
-      <h1>Trò chơi Caro</h1>
       <div className="game-container">
-        <div className="game-info">
-          <p>Phòng: {roomId || "N/A"}</p>
-          <p>Biểu tượng của bạn: {playerSymbol || "N/A"}</p>
-          <p>Trạng thái: {gameStatus}</p>
-          <p>Lượt hiện tại: {currentTurn || "N/A"}</p>
-          <div className="game-actions">
-            {gameStatus === "waiting" && (
-              <button onClick={handleStartGame} disabled={!roomId}>
-                Bắt đầu trò chơi
+        {/* Left Panel: Game Controls */}
+        <div className="left-panel panel">
+          <div className="form-section">
+            <h3>🔗 Kết nối</h3>
+            <div className="status-display">Phòng: #{roomId || "N/A"}</div>
+            <div className="status-display">
+              Người chơi: {user?.username || "Anonymous"}
+            </div>
+            <div
+              className={`status-display ${
+                wsConnected ? "status-connected" : "status-disconnected"
+              }`}
+            >
+              WebSocket:{" "}
+              {wsConnected
+                ? "Connected"
+                : isConnecting
+                ? "Connecting..."
+                : "Disconnected"}
+            </div>
+          </div>
+          <div className="form-section">
+            <h3>🎮 Điều khiển Game</h3>
+            {gameStatus === "waiting" && !isPlayerReady && (
+              <button
+                className="btn-ready btn-success"
+                onClick={handleMarkReady}
+                disabled={isConnecting}
+              >
+                ✅ Đánh dấu sẵn sàng
               </button>
             )}
+            {gameStatus === "waiting" && isPlayerReady && (
+              <div className="status-ready">
+                Bạn đã sẵn sàng! Đang chờ đối thủ...
+              </div>
+            )}
+            {gameStatus === "starting" && (
+              <div className="status-starting">Trò chơi đang bắt đầu...</div>
+            )}
             {gameStatus === "playing" && (
-              <button onClick={handleSurrender}>Đầu hàng</button>
+              <button
+                className="btn-surrender btn-danger"
+                onClick={handleSurrender}
+              >
+                🏳️ Đầu hàng
+              </button>
             )}
             {gameStatus === "ended" && (
               <>
-                <button onClick={handleRequestRematch}>Yêu cầu tái đấu</button>
-                <button onClick={handleAcceptRematch}>Chấp nhận tái đấu</button>
+                <button
+                  className="btn-new-game btn-success"
+                  onClick={handleRequestRematch}
+                >
+                  🔄 Yêu cầu tái đấu
+                </button>
+                <button
+                  className="btn-accept btn-success"
+                  onClick={handleAcceptRematch}
+                >
+                  ✅ Chấp nhận tái đấu
+                </button>
               </>
             )}
-            <button onClick={() => navigate("/lobby")}>Rời phòng</button>
+            <button className="btn-leave btn-warning" onClick={handleLeaveRoom}>
+              🚪 Thoát phòng
+            </button>
+          </div>
+          <div className="form-section">
+            <h3>👥 Trạng thái người chơi</h3>
+            <div className="player-status">
+              <div
+                className={`player-card ${
+                  playerSymbol === currentTurn ? "active" : ""
+                }`}
+              >
+                <div>Bạn ({playerSymbol || "?"})</div>
+                <div>{isPlayerReady ? "Sẵn sàng" : "Chưa sẵn sàng"}</div>
+              </div>
+              <div className="player-card">
+                <div>Đối thủ</div>
+                <div>
+                  {gameStatus === "playing" && playerSymbol !== currentTurn
+                    ? "Đang đi..."
+                    : "Đang chờ..."}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="game-board-container">{renderBoard()}</div>
-        <div className="game-chat">
-          <h3>Trò chuyện</h3>
-          <div className="chat-messages">
-            {chatMessages.map((msg, index) => (
-              <p key={index}>
-                <strong>{msg.sender}:</strong> {msg.content}
+        {/* Center Panel: Game Board */}
+        <div className="center-panel panel">
+          <div className="game-board-container">
+            <div className="game-info-display">
+              <h2>🎯 Caro Game - Room #{roomId}</h2>
+              <p>
+                Trạng thái:{" "}
+                {gameStatus === "waiting"
+                  ? "Đang chờ"
+                  : gameStatus === "starting"
+                  ? "Đang bắt đầu"
+                  : gameStatus === "playing"
+                  ? "Đang chơi"
+                  : "Kết thúc"}
               </p>
-            ))}
+              {gameStatus === "playing" && (
+                <p>
+                  Lượt: {playerSymbol === currentTurn ? "Của bạn" : "Đối thủ"}
+                </p>
+              )}
+            </div>
+            {renderBoard()}
           </div>
-          <form onSubmit={handleSendChat}>
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Nhập tin nhắn..."
-              disabled={gameStatus === "ended" || !user}
-            />
-            <button type="submit" disabled={gameStatus === "ended" || !user}>
-              Gửi
-            </button>
-          </form>
+        </div>
+        {/* Right Panel: Chat */}
+        <div className="right-panel panel">
+          <div className="form-section">
+            <h3>💬 Game Chat ({chatMessages.length})</h3>
+            <div className="chat-container">
+              <div className="chat-messages">
+                {chatMessages.slice(-8).map((msg, index) => (
+                  <div key={index} className="message">
+                    <strong>{msg.sender}:</strong> {msg.content}
+                  </div>
+                ))}
+                {chatMessages.length === 0 && (
+                  <div className="no-messages">Chưa có tin nhắn nào</div>
+                )}
+              </div>
+              <div className="chat-input-container">
+                <input
+                  className="chat-input"
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleSendChat()}
+                  placeholder="Nhập tin nhắn..."
+                  disabled={gameStatus === "ended" || !user || !wsConnected}
+                  maxLength={100}
+                />
+                <button
+                  className="chat-send-btn"
+                  onClick={handleSendChat}
+                  disabled={
+                    !chatInput.trim() ||
+                    gameStatus === "ended" ||
+                    !user ||
+                    !wsConnected
+                  }
+                >
+                  Gửi
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

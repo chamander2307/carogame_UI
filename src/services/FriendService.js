@@ -65,7 +65,7 @@ export const rejectFriendRequest = async (userId) => {
 // Get Friends List
 export const getFriendsList = async () => {
   try {
-    const response = await instance.get("/friends");
+    const response = await instance.get("/friends/list");
     return response.data.data;
   } catch (error) {
     handleApiError(error, "Lấy danh sách bạn bè thất bại");
