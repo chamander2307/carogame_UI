@@ -1,7 +1,6 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { UserContext } from "../../../context/UserContext.js";
 import {
-  getUserProfile,
   updateProfile,
   uploadAvatar,
   updateProfileWithAvatar,
@@ -37,6 +36,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (user) {
+      console.log("User data:", user); // Debug user.avatarUrl
       setFormData({
         username: user.username || "",
         displayName: user.displayName || "",
@@ -49,6 +49,7 @@ const ProfilePage = () => {
   const loadUserStats = async () => {
     try {
       const response = await getUserGameStatistics();
+      console.log("User stats response:", response); // Debug API response
       setStats({
         totalGamesPlayed: response.totalGamesPlayed || 0,
         totalWins: response.totalWins || 0,
@@ -57,7 +58,6 @@ const ProfilePage = () => {
         winRate: response.winRate || 0,
         bestWinStreak: response.bestWinStreak || 0,
       });
-      toast.success("Lấy thống kê người dùng thành công");
     } catch (error) {
       console.error("Failed to load user stats:", {
         message: error.message,
@@ -128,6 +128,7 @@ const ProfilePage = () => {
       await refreshUserProfile();
       setIsEditing(false);
       setSelectedAvatar(null);
+      toast.success("Cập nhật thông tin thành công");
     } catch (error) {
       console.error("Update profile error:", {
         message: error.message,
@@ -151,6 +152,7 @@ const ProfilePage = () => {
       const result = await uploadAvatar(selectedAvatar);
       await refreshUserProfile();
       setSelectedAvatar(null);
+      toast.success("Cập nhật ảnh đại diện thành công");
     } catch (error) {
       console.error("Upload avatar error:", {
         message: error.message,
@@ -175,6 +177,23 @@ const ProfilePage = () => {
     setIsEditing(false);
   };
 
+  const normalizeAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl || avatarUrl === "null" || avatarUrl.trim() === "") {
+      console.warn("Invalid avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+    if (avatarUrl.startsWith("/")) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+    try {
+      new URL(avatarUrl);
+      return avatarUrl;
+    } catch (e) {
+      console.warn("Invalid absolute avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+  };
+
   const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : "U";
   };
@@ -195,9 +214,18 @@ const ProfilePage = () => {
                     src={
                       selectedAvatar
                         ? URL.createObjectURL(selectedAvatar)
-                        : user?.avatarUrl
+                        : normalizeAvatarUrl(user?.avatarUrl)
                     }
                     alt="Avatar"
+                    onError={(e) => {
+                      console.warn(
+                        `Failed to load avatar for ${
+                          user?.username || "user"
+                        }:`,
+                        user?.avatarUrl
+                      );
+                      e.target.src = "/default-avatar.png";
+                    }}
                   />
                 ) : (
                   <span className="avatar-placeholder">
@@ -256,14 +284,14 @@ const ProfilePage = () => {
                     <button
                       className="btn-edit"
                       onClick={() => setIsEditing(true)}
-                      disabled={isChangingPassword}
+                      disabled={isChangingPassword || loading}
                     >
                       Chỉnh sửa
                     </button>
                     <button
                       className="btn-change-password"
                       onClick={() => setIsChangingPassword(true)}
-                      disabled={isEditing}
+                      disabled={isEditing || loading}
                     >
                       Đổi mật khẩu
                     </button>
@@ -327,7 +355,10 @@ const ProfilePage = () => {
 
             {isChangingPassword && (
               <ChangePassword
-                onSuccess={() => setIsChangingPassword(false)}
+                onSuccess={() => {
+                  setIsChangingPassword(false);
+                  toast.success("Đổi mật khẩu thành công");
+                }}
                 onCancel={() => setIsChangingPassword(false)}
               />
             )}

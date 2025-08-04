@@ -19,7 +19,12 @@
   padding-bottom: 1rem;
   border-bottom: 2px solid #8B4513;
 }
-
+.user-avatar img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 50%;
+}
 .friends-header h1 {
   color: #8B4513;
   font-size: 2.5rem;

@@ -6,6 +6,7 @@ import {
   getGameReplay,
 } from "../../services/GameStatisticsService";
 import { toast } from "react-toastify";
+import { getVietnameseMessage } from "../../constants/VietNameseStatus";
 import "./index.css";
 
 const HistoryPage = () => {
@@ -34,10 +35,15 @@ const HistoryPage = () => {
     try {
       setLoading(true);
       const response = await getUserGameReplays(currentPage, 10, "desc");
-      setGameHistory(response.content || []);
-      setTotalPages(response.totalPages || 0);
+      console.log("Game history response:", response); // Debug API response
+      setGameHistory(response.data?.content || []);
+      setTotalPages(response.data?.totalPages || 0);
     } catch (error) {
-      console.error("Failed to load game history:", error);
+      console.error("Failed to load game history:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
       toast.error(error.message || "Có lỗi xảy ra khi tải lịch sử trận đấu");
     } finally {
       setLoading(false);
@@ -47,6 +53,7 @@ const HistoryPage = () => {
   const loadUserStats = async () => {
     try {
       const response = await getUserGameStatistics();
+      console.log("User stats response:", response); // Debug API response
       setUserStats({
         totalGamesPlayed: response.totalGamesPlayed || 0,
         totalWins: response.totalWins || 0,
@@ -55,7 +62,11 @@ const HistoryPage = () => {
         winRate: response.winRate || 0,
       });
     } catch (error) {
-      console.error("Failed to load user stats:", error);
+      console.error("Failed to load user stats:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+      });
       toast.error(error.message || "Có lỗi xảy ra khi tải thống kê người dùng");
     }
   };
@@ -98,19 +109,53 @@ const HistoryPage = () => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("vi-VN");
+      return date.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
     } catch (error) {
+      console.warn("Invalid date format:", dateString);
       return dateString;
     }
   };
 
+  const normalizeAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl || avatarUrl === "null" || avatarUrl.trim() === "") {
+      console.warn("Invalid avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+    // Handle relative paths
+    if (avatarUrl.startsWith("/")) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+    // Validate absolute URLs
+    try {
+      new URL(avatarUrl);
+      return avatarUrl;
+    } catch (e) {
+      console.warn("Invalid absolute avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+  };
+
   const handleViewGame = async (gameId) => {
+    if (!gameId) {
+      toast.error("ID trận đấu không hợp lệ");
+      console.error("Invalid gameId:", gameId);
+      return;
+    }
     try {
       const response = await getGameReplay(gameId);
       console.log("Game replay:", response);
       toast.info("Tính năng xem lại trận đấu sẽ được cập nhật sớm");
     } catch (error) {
-      console.error("Failed to load game replay:", error);
+      console.error("Failed to load game replay:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+        gameId,
+      });
       toast.error(error.message || "Có lỗi xảy ra khi tải replay trận đấu");
     }
   };
@@ -130,7 +175,7 @@ const HistoryPage = () => {
   const StatCard = ({ title, value, className = "" }) => (
     <div className={`stat-card ${className}`}>
       <div className="stat-value">{value}</div>
-      <div className="stat-title">{title}</div>
+      <div className="stat-label">{title}</div>
     </div>
   );
 
@@ -139,9 +184,7 @@ const HistoryPage = () => {
       <div className="history-container">
         <div className="history-header">
           <h1>Lịch sử trận đấu</h1>
-
-          {/* User Statistics */}
-          <div className="user-stats">
+          <div className="history-stats">
             <StatCard
               title="Tổng trận"
               value={userStats.totalGamesPlayed}
@@ -184,7 +227,6 @@ const HistoryPage = () => {
               <option value="draw">Hòa</option>
             </select>
           </div>
-
           <div className="search-group">
             <input
               type="text"
@@ -209,43 +251,61 @@ const HistoryPage = () => {
           ) : (
             <>
               <div className="games-list">
-                {filteredGames.map((game) => (
-                  <div key={game.gameId} className="game-item">
-                    <div className="game-info">
-                      <div className="opponent-info">
-                        <span className="opponent-name">
-                          {game.opponentName || "Unknown"}
-                        </span>
+                <div className="games-table">
+                  <div className="table-header">
+                    <span className="col-opponent">Đối thủ</span>
+                    <span className="col-result">Kết quả</span>
+                    <span className="col-duration">Thời gian</span>
+                    <span className="col-moves">Số nước</span>
+                    <span className="col-date">Ngày</span>
+                    <span className="col-action">Hành động</span>
+                  </div>
+                  {filteredGames.map((game) => (
+                    <div key={game.gameId} className="table-row">
+                      <div className="col-opponent">
+                        <div className="opponent-info">
+                          <div className="opponent-avatar">
+                            <img
+                              src={normalizeAvatarUrl(game.opponentAvatar)}
+                              alt={game.opponentName || "Unknown"}
+                              onError={(e) => {
+                                console.warn(
+                                  `Failed to load avatar for ${
+                                    game.opponentName || "Unknown"
+                                  }:`,
+                                  game.opponentAvatar
+                                );
+                                e.target.src = "/default-avatar.png";
+                              }}
+                            />
+                          </div>
+                          <span>{game.opponentName || "Unknown"}</span>
+                        </div>
+                      </div>
+                      <div className="col-result">
                         <span className={getResultClass(game.gameResult)}>
                           {getResultText(game.gameResult)}
                         </span>
                       </div>
-                      <div className="game-details">
-                        <span className="duration">
-                          ⏱️ {formatDuration(game.gameDurationMinutes)}
-                        </span>
-                        <span className="moves">
-                          🎯 {game.totalMoves || 0} nước
-                        </span>
-                        <span className="date">
-                          📅 {formatDate(game.gameEndTime)}
-                        </span>
-                        <span className="win-condition">
-                          🏆 {game.endReason || "N/A"}
-                        </span>
+                      <div className="col-duration">
+                        {formatDuration(game.gameDurationMinutes)}
+                      </div>
+                      <div className="col-moves">{game.totalMoves || 0}</div>
+                      <div className="col-date">
+                        {formatDate(game.gameEndTime)}
+                      </div>
+                      <div className="col-action">
+                        <button
+                          className="btn-view"
+                          onClick={() => handleViewGame(game.gameId)}
+                        >
+                          Xem lại
+                        </button>
                       </div>
                     </div>
-                    <button
-                      className="view-game-btn"
-                      onClick={() => handleViewGame(game.gameId)}
-                    >
-                      Xem lại
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="pagination">
                   <button

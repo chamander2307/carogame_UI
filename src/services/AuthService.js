@@ -95,9 +95,7 @@ export const resetPassword = async (resetData) => {
 // Request Change Password OTP
 export const requestChangePasswordOtp = async () => {
   try {
-    const response = await instance.post(
-      "/api/auth/request-change-password-otp"
-    );
+    const response = await instance.post("/auth/request-change-password-otp");
     toast.success("OTP thay đổi mật khẩu đã được gửi đến email của bạn");
     return response.data; // ApiResponse<Void>
   } catch (error) {
@@ -109,7 +107,7 @@ export const requestChangePasswordOtp = async () => {
 export const changePassword = async (changePasswordData) => {
   try {
     const response = await instance.post(
-      "/api/auth/change-password",
+      "/auth/change-password",
       changePasswordData
     );
     toast.success("Thay đổi mật khẩu thành công");

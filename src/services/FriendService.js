@@ -11,11 +11,23 @@ const handleApiError = (
   const vietnameseMessage =
     getVietnameseMessage(error.response?.data?.errorCode) || errorMessage;
   toast.error(vietnameseMessage);
-  if (error.response?.status === 401) {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    window.location.href = "/login";
+
+  switch (error.response?.status) {
+    case 401:
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      window.location.href = "/login";
+      break;
+    case 400:
+    case 404:
+    case 409:
+    case 500:
+      // Additional handling if needed
+      break;
+    default:
+      break;
   }
+
   throw new Error(vietnameseMessage);
 };
 
@@ -23,7 +35,7 @@ const handleApiError = (
 export const searchUsers = async (searchTerm) => {
   try {
     const response = await instance.post("/friends/search", { searchTerm });
-    return response.data.data;
+    return response.data.data; // Returns array of users
   } catch (error) {
     handleApiError(error, "Tìm kiếm người dùng thất bại");
   }
@@ -32,7 +44,7 @@ export const searchUsers = async (searchTerm) => {
 // Send Friend Request
 export const sendFriendRequest = async (userId) => {
   try {
-    const response = await instance.post(`/friends/${userId}/request`);
+    const response = await instance.post(`/friends/request/${userId}`);
     toast.success("Gửi lời mời kết bạn thành công");
     return response.data;
   } catch (error) {
@@ -43,7 +55,7 @@ export const sendFriendRequest = async (userId) => {
 // Accept Friend Request
 export const acceptFriendRequest = async (userId) => {
   try {
-    const response = await instance.post(`/friends/${userId}/accept`);
+    const response = await instance.post(`/friends/accept/${userId}`);
     toast.success("Chấp nhận lời mời kết bạn thành công");
     return response.data;
   } catch (error) {
@@ -54,7 +66,7 @@ export const acceptFriendRequest = async (userId) => {
 // Reject Friend Request
 export const rejectFriendRequest = async (userId) => {
   try {
-    const response = await instance.post(`/friends/${userId}/reject`);
+    const response = await instance.post(`/friends/reject/${userId}`);
     toast.success("Từ chối lời mời kết bạn thành công");
     return response.data;
   } catch (error) {
@@ -66,7 +78,7 @@ export const rejectFriendRequest = async (userId) => {
 export const getFriendsList = async () => {
   try {
     const response = await instance.get("/friends/list");
-    return response.data.data;
+    return response.data.data; // Returns array of friends
   } catch (error) {
     handleApiError(error, "Lấy danh sách bạn bè thất bại");
   }
@@ -76,7 +88,7 @@ export const getFriendsList = async () => {
 export const getPendingFriendRequests = async () => {
   try {
     const response = await instance.get("/friends/requests/received");
-    return response.data.data;
+    return response.data.data; // Returns array of pending requests
   } catch (error) {
     handleApiError(error, "Lấy danh sách lời mời kết bạn thất bại");
   }
@@ -86,7 +98,7 @@ export const getPendingFriendRequests = async () => {
 export const getSentFriendRequests = async () => {
   try {
     const response = await instance.get("/friends/requests/sent");
-    return response.data.data;
+    return response.data.data; // Returns array of sent requests
   } catch (error) {
     handleApiError(error, "Lấy danh sách lời mời đã gửi thất bại");
   }

@@ -23,6 +23,35 @@
   margin: 0;
 }
 
+/* Stats Cards */
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border-left: 4px solid #8B4513;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #8B4513;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
 /* Filters */
 .history-filters {
   background: white;
@@ -79,35 +108,6 @@
   border-color: #8B4513;
 }
 
-/* Stats Cards */
-.history-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  border-left: 4px solid #8B4513;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #8B4513;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  color: #666;
-  font-size: 0.9rem;
-}
-
 /* Games List */
 .games-list {
   background: white;
@@ -120,6 +120,7 @@
   padding: 3rem;
   text-align: center;
   color: #666;
+  font-size: 1.1rem;
 }
 
 .games-table {
@@ -166,6 +167,7 @@
   width: 35px;
   height: 35px;
   border-radius: 50%;
+  overflow: hidden;
   background: #8B4513;
   color: white;
   display: flex;
@@ -173,6 +175,14 @@
   justify-content: center;
   font-weight: 600;
   font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.opponent-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* Result Styling */
@@ -182,6 +192,7 @@
   font-weight: 600;
   font-size: 0.9rem;
   text-align: center;
+  display: inline-block;
 }
 
 .result.win {
@@ -213,6 +224,63 @@
 
 .btn-view:hover {
   background: #A0522D;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+}
+
+.pagination-btn {
+  background: #8B4513;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #A0522D;
+}
+
+.pagination-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.page-info {
+  color: #666;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Loading State */
+.loading-container {
+  text-align: center;
+  padding: 3rem;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #8B4513;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Responsive Design */
@@ -277,6 +345,7 @@
   .col-duration::before { content: "Thời gian: "; font-weight: 600; }
   .col-moves::before { content: "Số nước: "; font-weight: 600; }
   .col-date::before { content: "Ngày: "; font-weight: 600; }
+  .col-action::before { content: "Hành động: "; font-weight: 600; }
 }
 
 @media (max-width: 480px) {
@@ -289,5 +358,9 @@
   .filter-select,
   .search-input {
     width: 100%;
+  }
+  
+  .history-header h1 {
+    font-size: 2rem;
   }
 }
