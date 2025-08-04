@@ -44,9 +44,6 @@ const Header = () => {
             <Link to="/game" className="nav-item">
               Chơi ngay
             </Link>
-            <Link to="/players" className="nav-item">
-              Người chơi
-            </Link>
             <Link to="/history" className="nav-item">
               Lịch sử
             </Link>

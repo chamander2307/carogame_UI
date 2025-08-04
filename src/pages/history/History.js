@@ -11,8 +11,6 @@ import "./index.css";
 
 const HistoryPage = () => {
   const { user } = useContext(UserContext);
-  const [filter, setFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -26,7 +24,11 @@ const HistoryPage = () => {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.warn("User is null or undefined, skipping API calls");
+      return;
+    }
+    console.log("User data:", user); // Debug user object
     loadGameHistory();
     loadUserStats();
   }, [user, currentPage]);
@@ -34,17 +36,24 @@ const HistoryPage = () => {
   const loadGameHistory = async () => {
     try {
       setLoading(true);
+      console.log("Calling /api/statistics/my-history with params:", {
+        page: currentPage,
+        size: 10,
+        sortDirection: "desc",
+      });
       const response = await getUserGameReplays(currentPage, 10, "desc");
-      console.log("Game history response:", response); // Debug API response
-      setGameHistory(response.data?.content || []);
-      setTotalPages(response.data?.totalPages || 0);
+      console.log("Game history response:", response);
+      const games = response.content || [];
+      const pages = response.totalPages || 0;
+      console.log("Parsed games:", games, "Total pages:", pages);
+      setGameHistory(games);
+      setTotalPages(pages);
     } catch (error) {
       console.error("Failed to load game history:", {
         message: error.message,
         status: error.response?.status,
         errorCode: error.response?.data?.errorCode,
       });
-      toast.error(error.message || "Có lỗi xảy ra khi tải lịch sử trận đấu");
     } finally {
       setLoading(false);
     }
@@ -53,7 +62,7 @@ const HistoryPage = () => {
   const loadUserStats = async () => {
     try {
       const response = await getUserGameStatistics();
-      console.log("User stats response:", response); // Debug API response
+      console.log("User stats response:", response);
       setUserStats({
         totalGamesPlayed: response.totalGamesPlayed || 0,
         totalWins: response.totalWins || 0,
@@ -67,18 +76,8 @@ const HistoryPage = () => {
         status: error.response?.status,
         errorCode: error.response?.data?.errorCode,
       });
-      toast.error(error.message || "Có lỗi xảy ra khi tải thống kê người dùng");
     }
   };
-
-  const filteredGames = gameHistory.filter((game) => {
-    if (filter !== "all" && game.gameResult?.toLowerCase() !== filter) {
-      return false;
-    }
-    if (!searchTerm) return true;
-    const opponent = game.opponentName || "";
-    return opponent.toLowerCase().includes(searchTerm.toLowerCase());
-  });
 
   const getResultText = (result) => {
     switch (result?.toLowerCase()) {
@@ -213,38 +212,13 @@ const HistoryPage = () => {
           </div>
         </div>
 
-        <div className="history-filters">
-          <div className="filter-group">
-            <label>Lọc theo kết quả:</label>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Tất cả</option>
-              <option value="win">Thắng</option>
-              <option value="lose">Thua</option>
-              <option value="draw">Hòa</option>
-            </select>
-          </div>
-          <div className="search-group">
-            <input
-              type="text"
-              placeholder="Tìm kiếm đối thủ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-        </div>
-
         <div className="history-content">
           {loading ? (
             <div className="loading-container">
               <div className="loading-spinner"></div>
               <p>Đang tải lịch sử trận đấu...</p>
             </div>
-          ) : filteredGames.length === 0 ? (
+          ) : gameHistory.length === 0 ? (
             <div className="no-games">
               <p>Không có trận đấu nào được tìm thấy</p>
             </div>
@@ -260,7 +234,7 @@ const HistoryPage = () => {
                     <span className="col-date">Ngày</span>
                     <span className="col-action">Hành động</span>
                   </div>
-                  {filteredGames.map((game) => (
+                  {gameHistory.map((game) => (
                     <div key={game.gameId} className="table-row">
                       <div className="col-opponent">
                         <div className="opponent-info">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UserContext } from "../../context/UserContext";
 import { useGameLogic } from "../../hooks/useGameLogic";
@@ -49,37 +49,47 @@ const GamePage = () => {
     sendChatMessage: sendChat,
   } = useChatManager(webSocketEventHandler);
 
-  // Show connection error if any
+  // Debug connection error
   useEffect(() => {
     if (connectionError) {
-      toast.error(connectionError);
+      console.error("WebSocket connection error:", connectionError);
     }
   }, [connectionError]);
 
-  // Debug game state on every render - CRITICAL for debugging real-time updates
+  // Debug game state on every render
   useEffect(() => {
     console.log("=== GAMEPAGE STATE UPDATE ===");
     console.log("Game Status:", gameState.gameStatus);
     console.log("Player Symbol:", gameState.playerSymbol);
     console.log("Current Turn:", gameState.currentTurn);
-    console.log("Board moves count:", gameState.board.flat().filter(cell => cell !== 0).length);
+    console.log(
+      "Board moves count:",
+      gameState.board.flat().filter((cell) => cell !== 0).length
+    );
+    console.log("Opponent:", gameState.opponent);
     console.log("React render timestamp:", Date.now());
     console.log("=== END GAMEPAGE UPDATE ===");
-  }); // No dependency array - logs every render
+  });
 
-  // Debug game state on every render - CRITICAL for debugging real-time updates
-  useEffect(() => {
-    console.log("=== GAMEPAGE STATE UPDATE ===");
-    console.log("Game Status:", gameState.gameStatus);
-    console.log("Player Symbol:", gameState.playerSymbol);
-    console.log("Current Turn:", gameState.currentTurn);
-    console.log("Board moves count:", gameState.board.flat().filter(cell => cell !== 0).length);
-    console.log("React render timestamp:", Date.now());
-    console.log("=== END GAMEPAGE UPDATE ===");
-  }); // No dependency array - logs every render
+  // Normalize avatar URLs
+  const normalizeAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl || avatarUrl === "null" || avatarUrl.trim() === "") {
+      console.warn("Invalid avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+    if (avatarUrl.startsWith("/")) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+    try {
+      new URL(avatarUrl);
+      return avatarUrl;
+    } catch (e) {
+      console.warn("Invalid absolute avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+  };
 
   // Handle player move with clean error handling
-
   const handleMove = async (row, col) => {
     console.log("=== CELL CLICK DEBUG ===");
     console.log("Cell clicked:", row, col);
@@ -87,27 +97,33 @@ const GamePage = () => {
     console.log("PlayerSymbol:", gameState.playerSymbol);
     console.log("CurrentTurn:", gameState.currentTurn);
     console.log("GameStatus:", gameState.gameStatus);
-    console.log("Is my turn check:", gameState.playerSymbol === gameState.currentTurn);
+    console.log(
+      "Is my turn check:",
+      gameState.playerSymbol === gameState.currentTurn
+    );
     console.log("HTML LOGIC CHECK:");
     console.log("- My symbol:", gameState.playerSymbol);
     console.log("- Current turn:", gameState.currentTurn);
-    console.log("- Should be my turn:", gameState.playerSymbol === gameState.currentTurn);
+    console.log(
+      "- Should be my turn:",
+      gameState.playerSymbol === gameState.currentTurn
+    );
     console.log("Cell empty check:", gameState.board[row]?.[col] === 0);
     console.log("Making move flag:", gameState.isMakingMove);
     console.log("========================");
-    
+
     if (gameState.gameStatus !== "playing") {
       console.warn("Move rejected: game not playing");
       toast.warn("Game chưa bắt đầu hoặc đã kết thúc!");
       return;
     }
-    
+
     if (gameState.playerSymbol !== gameState.currentTurn) {
       console.warn("Move rejected: not your turn");
       toast.warn("Không phải lượt của bạn!");
       return;
     }
-    
+
     if (gameState.board[row]?.[col] !== 0) {
       console.warn("Move rejected: cell not empty");
       toast.warn("Ô này đã có quân cờ!");
@@ -117,16 +133,16 @@ const GamePage = () => {
     try {
       console.log(`Attempting to make move at (${row}, ${col})`);
       const result = await makeMove(row, col);
-      
+
       if (result.success) {
         console.log("Move successful:", result);
+        toast.success("Nước đi thành công!");
       } else {
         console.warn("Move failed:", result.reason);
         toast.warn(result.reason);
       }
     } catch (error) {
       console.error("Move handling failed:", error);
-      toast.error("Xử lý nước đi thất bại!");
     }
   };
 
@@ -134,9 +150,9 @@ const GamePage = () => {
   const handleSendChat = async () => {
     try {
       await sendChat(roomId, user);
+      toast.success("Gửi tin nhắn thành công!");
     } catch (error) {
       console.error("Chat sending failed:", error);
-      toast.error("Gửi tin nhắn thất bại!");
     }
   };
 
@@ -144,9 +160,9 @@ const GamePage = () => {
   const handleMarkReady = async () => {
     try {
       await markPlayerReady();
+      toast.success("Đánh dấu sẵn sàng thành công!");
     } catch (error) {
       console.error("Mark ready failed:", error);
-      toast.error("Đánh dấu sẵn sàng thất bại!");
     }
   };
 
@@ -154,9 +170,9 @@ const GamePage = () => {
   const handleSurrender = async () => {
     try {
       await surrenderGame();
+      toast.success("Đã đầu hàng!");
     } catch (error) {
       console.error("Surrender failed:", error);
-      toast.error("Đầu hàng thất bại!");
     }
   };
 
@@ -164,9 +180,9 @@ const GamePage = () => {
   const handleRequestRematch = async () => {
     try {
       await requestRematch();
+      toast.success("Yêu cầu tái đấu thành công!");
     } catch (error) {
       console.error("Rematch request failed:", error);
-      toast.error("Yêu cầu tái đấu thất bại!");
     }
   };
 
@@ -174,9 +190,9 @@ const GamePage = () => {
   const handleAcceptRematch = async () => {
     try {
       await acceptRematch();
+      toast.success("Chấp nhận tái đấu thành công!");
     } catch (error) {
       console.error("Accept rematch failed:", error);
-      toast.error("Chấp nhận tái đấu thất bại!");
     }
   };
 
@@ -184,9 +200,10 @@ const GamePage = () => {
   const handleLeaveRoom = async () => {
     try {
       await leaveRoom();
+      toast.success("Rời phòng thành công!");
+      navigate("/lobby");
     } catch (error) {
       console.error("Leave room failed:", error);
-      toast.error("Rời phòng thất bại!");
     }
   };
 
@@ -199,7 +216,9 @@ const GamePage = () => {
             {Array.from({ length: 15 }).map((_, col) => (
               <div
                 key={`${row}-${col}`}
-                className={`board-cell ${gameState.board[row][col] ? "filled" : ""} ${
+                className={`board-cell ${
+                  gameState.board[row][col] ? "filled" : ""
+                } ${
                   gameState.gameStatus === "playing" &&
                   !gameState.isMakingMove &&
                   gameState.board[row][col] === 0 &&
@@ -219,7 +238,11 @@ const GamePage = () => {
                   opacity: gameState.isMakingMove ? 0.6 : 1,
                 }}
               >
-                {gameState.board[row][col] === 1 ? "X" : gameState.board[row][col] === 2 ? "O" : ""}
+                {gameState.board[row][col] === 1
+                  ? "X"
+                  : gameState.board[row][col] === 2
+                  ? "O"
+                  : ""}
               </div>
             ))}
           </div>
@@ -270,7 +293,7 @@ const GamePage = () => {
                 : "Disconnected"}
             </div>
           </div>
-          
+
           <div className="form-section">
             <h3>🎮 Điều khiển Game</h3>
             {gameState.gameStatus === "waiting" && !gameState.isPlayerReady && (
@@ -318,30 +341,71 @@ const GamePage = () => {
               🚪 Thoát phòng
             </button>
           </div>
-          
+
           <div className="form-section">
             <h3>👥 Trạng thái người chơi</h3>
             <div className="player-status">
               <div
                 className={`player-card ${
-                  gameState.playerSymbol === gameState.currentTurn ? "active" : ""
+                  gameState.playerSymbol === gameState.currentTurn
+                    ? "active"
+                    : ""
                 }`}
               >
-                <div>Bạn ({gameState.playerSymbol || "?"})</div>
-                <div>{gameState.isPlayerReady ? "Sẵn sàng" : "Chưa sẵn sàng"}</div>
+                <div className="player-info">
+                  <div className="player-avatar">
+                    <img
+                      src={normalizeAvatarUrl(user?.avatarUrl)}
+                      alt={user?.username || "You"}
+                      onError={(e) => {
+                        console.warn(
+                          `Failed to load avatar for ${
+                            user?.username || "You"
+                          }:`,
+                          user?.avatarUrl
+                        );
+                        e.target.src = "/default-avatar.png";
+                      }}
+                    />
+                  </div>
+                  <div>Bạn ({gameState.playerSymbol || "?"})</div>
+                </div>
+                <div>
+                  {gameState.isPlayerReady ? "Sẵn sàng" : "Chưa sẵn sàng"}
+                </div>
               </div>
               <div className="player-card">
-                <div>Đối thủ</div>
+                <div className="player-info">
+                  <div className="player-avatar">
+                    <img
+                      src={normalizeAvatarUrl(gameState.opponent?.avatarUrl)}
+                      alt={gameState.opponent?.username || "Opponent"}
+                      onError={(e) => {
+                        console.warn(
+                          `Failed to load avatar for ${
+                            gameState.opponent?.username || "Opponent"
+                          }:`,
+                          gameState.opponent?.avatarUrl
+                        );
+                        e.target.src = "/default-avatar.png";
+                      }}
+                    />
+                  </div>
+                  <div>Đối thủ</div>
+                </div>
                 <div>
-                  {gameState.gameStatus === "playing" && gameState.playerSymbol !== gameState.currentTurn
+                  {gameState.gameStatus === "playing" &&
+                  gameState.playerSymbol !== gameState.currentTurn
                     ? "Đang đi..."
-                    : "Đang chờ..."}
+                    : gameState.opponent?.isReady
+                    ? "Sẵn sàng"
+                    : "Chưa sẵn sàng"}
                 </div>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Center Panel: Game Board */}
         <div className="center-panel panel">
           <div className="game-board-container">
@@ -359,14 +423,17 @@ const GamePage = () => {
               </p>
               {gameState.gameStatus === "playing" && (
                 <p>
-                  Lượt: {gameState.playerSymbol === gameState.currentTurn ? "Của bạn" : "Đối thủ"}
+                  Lượt:{" "}
+                  {gameState.playerSymbol === gameState.currentTurn
+                    ? "Của bạn"
+                    : "Đối thủ"}
                 </p>
               )}
             </div>
             {renderBoard()}
           </div>
         </div>
-        
+
         {/* Right Panel: Chat */}
         <div className="right-panel panel">
           <div className="form-section">
@@ -375,7 +442,15 @@ const GamePage = () => {
               <div className="chat-messages">
                 {chatMessages.slice(-8).map((msg, index) => (
                   <div key={index} className="message">
-                    <strong>{typeof msg.sender === 'string' ? msg.sender : msg.sender?.username || msg.sender?.displayName || 'Unknown'}:</strong> {msg.content}
+                    <strong>
+                      {typeof msg.sender === "string"
+                        ? msg.sender
+                        : msg.sender?.username ||
+                          msg.sender?.displayName ||
+                          "Unknown"}
+                      :
+                    </strong>{" "}
+                    {msg.content}
                   </div>
                 ))}
                 {chatMessages.length === 0 && (
@@ -390,7 +465,9 @@ const GamePage = () => {
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSendChat()}
                   placeholder="Nhập tin nhắn..."
-                  disabled={gameState.gameStatus === "ended" || !user || !wsConnected}
+                  disabled={
+                    gameState.gameStatus === "ended" || !user || !wsConnected
+                  }
                   maxLength={100}
                 />
                 <button

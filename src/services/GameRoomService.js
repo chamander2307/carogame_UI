@@ -10,12 +10,14 @@ const handleApiError = (
   const errorMessage = error.response?.data?.message || defaultMessage;
   const vietnameseMessage =
     getVietnameseMessage(error.response?.data?.errorCode) || errorMessage;
-  toast.error(vietnameseMessage);
-  if (error.response?.status === 401) {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    window.location.href = "/login";
+
+  // Don't show toast for 401 errors - let axios interceptor handle them
+  if (error.response?.status !== 401) {
+    toast.error(vietnameseMessage);
   }
+
+  // Don't automatically redirect on 401 - let axios interceptor handle token refresh
+  // Only the interceptor should decide when to actually logout
   throw new Error(vietnameseMessage);
 };
 

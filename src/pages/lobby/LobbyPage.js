@@ -12,7 +12,7 @@ import {
 } from "../../services/GameRoomService";
 import { logout } from "../../services/AuthService";
 import "./LobbyPage.css";
-
+import { toast } from "react-toastify";
 const LobbyPage = () => {
   const navigate = useNavigate();
   const { user, checkAuthStatus } = useContext(UserContext);
@@ -24,23 +24,38 @@ const LobbyPage = () => {
   const [isPrivate, setIsPrivate] = useState(false);
   const [checkedExistingRoom, setCheckedExistingRoom] = useState(false);
 
-  const loadRooms = async (showNotification = true) => {
+  // Normalize avatar URLs
+  const normalizeAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl || avatarUrl === "null" || avatarUrl.trim() === "") {
+      console.warn("Invalid avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+    if (avatarUrl.startsWith("/")) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+    try {
+      new URL(avatarUrl);
+      return avatarUrl;
+    } catch (e) {
+      console.warn("Invalid absolute avatarUrl, using default:", avatarUrl);
+      return "/default-avatar.png";
+    }
+  };
+
+  const loadRooms = async () => {
     try {
       setLoading(true);
       const response = await getPublicRooms();
+      console.log("Response from getPublicRooms:", response);
       if (Array.isArray(response.content)) {
         setRooms(response.content);
       } else {
+        console.warn("Response content is not an array:", response.content);
         setRooms([]);
-        if (showNotification) {
-          console.error("Dữ liệu phòng không hợp lệ");
-        }
       }
     } catch (error) {
+      console.error("Failed to load rooms:", error);
       setRooms([]);
-      if (showNotification) {
-        console.error("Không thể tải danh sách phòng:", error);
-      }
     } finally {
       setLoading(false);
     }
@@ -56,19 +71,19 @@ const LobbyPage = () => {
         const roomId = userRooms[0].id;
         try {
           const joinResponse = await joinRoomById(roomId);
+          toast.success("Vào phòng thành công!");
           navigate(`/game?roomId=${roomId}`);
         } catch (error) {
           if (error.response?.data?.errorCode === "ALREADY_IN_ROOM") {
             navigate(`/game?roomId=${roomId}`);
           } else {
-            // Gọi leave room nếu không join được
             try {
               await leaveRoom(roomId);
               console.log("Đã rời phòng hiện tại");
-              loadRooms(false);
+              loadRooms();
             } catch (leaveError) {
               console.error("Không thể rời phòng:", leaveError);
-              loadRooms(false);
+              loadRooms();
             }
           }
         }
@@ -83,25 +98,40 @@ const LobbyPage = () => {
 
   const createRoomHandler = async () => {
     if (!newRoomName.trim()) {
-      console.warn("Vui lòng nhập tên phòng");
+      toast.error("Vui lòng nhập tên phòng");
       return;
     }
     if (newRoomName.length < 3 || newRoomName.length > 100) {
-      console.warn("Tên phòng phải từ 3 đến 100 ký tự");
+      toast.error("Tên phòng phải từ 3 đến 100 ký tự");
       return;
     }
 
     try {
+      // Check auth status before making the call
+      if (!checkAuthStatus()) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+        return;
+      }
+
       const response = await createRoom({
         name: newRoomName.trim(),
         isPrivate,
       });
+      toast.success("Tạo phòng thành công!");
       setShowCreateModal(false);
       setNewRoomName("");
       setIsPrivate(false);
       navigate(`/game?roomId=${response.id}`);
     } catch (error) {
       console.error("Không thể tạo phòng:", error);
+      
+      if (error.response?.status === 401) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+      } else {
+        toast.error("Không thể tạo phòng. Vui lòng thử lại!");
+      }
     }
   };
 
@@ -114,13 +144,14 @@ const LobbyPage = () => {
         );
         if (!joinCode) return;
         if (!/^[a-zA-Z0-9]{4}$/.test(joinCode)) {
-          console.warn("Mã tham gia phải là 4 ký tự chữ hoặc số");
+          toast.error("Mã tham gia phải là 4 ký tự chữ hoặc số");
           return;
         }
         response = await joinRoomByCode(joinCode);
       } else {
         response = await joinRoomById(roomId);
       }
+      toast.success("Vào phòng thành công!");
       navigate(`/game?roomId=${response.id || roomId}`);
     } catch (error) {
       console.error("Không thể vào phòng:", error);
@@ -129,16 +160,34 @@ const LobbyPage = () => {
 
   const handleQuickPlay = async () => {
     try {
+      // Check auth status before making the call
+      if (!checkAuthStatus()) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+        return;
+      }
+
       const response = await quickPlay();
+      toast.success("Tham gia chơi nhanh thành công!");
       navigate(`/game?roomId=${response.id}`);
     } catch (error) {
       console.error("Không thể tham gia chơi nhanh:", error);
+      
+      // Check if it's an auth error
+      if (error.response?.status === 401) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+      } else {
+        toast.error("Không thể tham gia chơi nhanh. Vui lòng thử lại!");
+      }
     }
   };
 
   const handleLogout = async () => {
     try {
       await logout();
+      toast.success("Đăng xuất thành công!");
+      navigate("/login");
     } catch (error) {
       console.error("Lỗi đăng xuất:", error);
     }
@@ -146,17 +195,18 @@ const LobbyPage = () => {
 
   useEffect(() => {
     if (!user || !checkAuthStatus()) {
+      console.warn("User not authenticated, redirecting to login");
       navigate("/login");
       return;
     }
     const handleExistingRoom = async () => {
       const hasExistingRoom = await checkAndJoinExistingRoom();
       if (!hasExistingRoom) {
-        loadRooms(true);
+        loadRooms();
       }
     };
     handleExistingRoom();
-    const interval = setInterval(() => loadRooms(false), 10000);
+    const interval = setInterval(() => loadRooms(), 10000);
     return () => clearInterval(interval);
   }, [user, navigate, checkAuthStatus]);
 
@@ -186,7 +236,7 @@ const LobbyPage = () => {
           </button>
           <button
             className="btn-refresh"
-            onClick={() => loadRooms(true)}
+            onClick={() => loadRooms()}
             disabled={loading}
           >
             🔄 Làm mới
@@ -201,7 +251,7 @@ const LobbyPage = () => {
             <h2>Danh sách phòng ({rooms.length})</h2>
             <button
               className="btn-refresh"
-              onClick={() => loadRooms(true)}
+              onClick={() => loadRooms()}
               disabled={loading}
             >
               🔄 Làm mới
@@ -244,9 +294,26 @@ const LobbyPage = () => {
                   <div className="room-players">
                     {room.players && room.players.length > 0 ? (
                       room.players.map((player) => (
-                        <span key={player.userId} className="player-tag">
-                          {player.displayName || player.username}
-                        </span>
+                        <div key={player.userId} className="player-info">
+                          <div className="player-avatar">
+                            <img
+                              src={normalizeAvatarUrl(player.avatarUrl)}
+                              alt={player.displayName || player.username}
+                              onError={(e) => {
+                                console.warn(
+                                  `Failed to load avatar for ${
+                                    player.displayName || player.username
+                                  }:`,
+                                  player.avatarUrl
+                                );
+                                e.target.src = "/default-avatar.png";
+                              }}
+                            />
+                          </div>
+                          <span className="player-tag">
+                            {player.displayName || player.username}
+                          </span>
+                        </div>
                       ))
                     ) : (
                       <span className="no-players">Chưa có người chơi</span>
