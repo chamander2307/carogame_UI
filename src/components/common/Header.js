@@ -64,7 +64,7 @@ const Header = () => {
               ref={userRef}
             >
               <div className="user-avatar">
-                {user.avatarUrl ? (
+                {user?.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
                     alt="Avatar"
@@ -72,11 +72,13 @@ const Header = () => {
                   />
                 ) : (
                   <span className="user-avatar-placeholder">
-                    {getInitial(user.fullName)}
+                    {getInitial(user?.displayName || user?.username || "")}
                   </span>
                 )}
               </div>
-              <span className="username">{user.fullName}</span>
+              <span className="username">
+                {user?.displayName || user?.username || "Người dùng"}
+              </span>
               {showUserDropdown && (
                 <div className="dropdown-menu user-dropdown">
                   <Link to="/profile">Tài khoản</Link>

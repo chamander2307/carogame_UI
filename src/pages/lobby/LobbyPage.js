@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext";
-import RoomService from "../../services/RoomService";
-import AuthServices from "../../services/AuthServices";
+import {
+  getPublicRooms,
+  createRoom,
+  joinRoomByCode,
+  joinRoomById,
+  quickPlay,
+} from "../../services/GameRoomService";
+import { logout } from "../../services/AuthService";
 import { toast } from "react-toastify";
 import "./LobbyPage.css";
 
@@ -16,23 +22,27 @@ const LobbyPage = () => {
   const [newRoomName, setNewRoomName] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // Load danh sách phòng công khai
   const loadRooms = async (showNotification = true) => {
     try {
       setLoading(true);
-      const response = await RoomService.getPublicRooms();
-      console.log("Response from getPublicRooms:", response);
-      if (response && response.success && Array.isArray(response.data)) {
-        setRooms(response.data);
+      const response = await getPublicRooms();
+      console.log("Public rooms response:", JSON.stringify(response, null, 2));
+      if (Array.isArray(response.data.content)) {
+        setRooms(response.data.content);
       } else {
-        console.warn("Response data is not an array:", response?.data);
+        console.warn("Response data is not an array:", response);
         setRooms([]);
-        if (response && response.message && showNotification) {
-          toast.error(response.message);
+        if (showNotification) {
+          toast.error("Dữ liệu phòng không hợp lệ");
         }
       }
     } catch (error) {
-      console.error("Failed to load rooms:", error);
+      console.error("Failed to load rooms:", {
+        message: error.message,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+        responseData: error.response?.data,
+      });
       setRooms([]);
       if (showNotification) {
         toast.error(
@@ -44,8 +54,7 @@ const LobbyPage = () => {
     }
   };
 
-  // Tạo phòng mới
-  const createRoom = async () => {
+  const createRoomHandler = async () => {
     if (!newRoomName.trim()) {
       toast.error("Vui lòng nhập tên phòng");
       return;
@@ -56,49 +65,37 @@ const LobbyPage = () => {
     }
 
     try {
-      const response = await RoomService.createRoom({
+      const response = await createRoom({
         name: newRoomName.trim(),
         isPrivate,
       });
-
-      if (response && response.success && response.data) {
-        toast.success(response.message || "Tạo phòng thành công!");
-        setShowCreateModal(false);
-        setNewRoomName("");
-        setIsPrivate(false);
-        navigate(`/game?roomId=${response.data.id}`);
-      } else {
-        toast.error(response?.message || "Không thể tạo phòng");
-      }
+      setShowCreateModal(false);
+      setNewRoomName("");
+      setIsPrivate(false);
+      navigate(`/game?roomId=${response.id}`);
     } catch (error) {
       console.error("Failed to create room:", error);
       toast.error(error.message || "Lỗi kết nối, không thể tạo phòng");
     }
   };
 
-  // Tham gia phòng
   const joinRoom = async (roomId, isPrivate = false) => {
     try {
-      let joinCode = null;
+      let response;
       if (isPrivate) {
-        joinCode = prompt("Nhập mã tham gia phòng (4 ký tự chữ hoặc số):");
+        const joinCode = prompt(
+          "Nhập mã tham gia phòng (4 ký tự chữ hoặc số):"
+        );
         if (!joinCode) return;
         if (!/^[a-zA-Z0-9]{4}$/.test(joinCode)) {
           toast.error("Mã tham gia phải là 4 ký tự chữ hoặc số");
           return;
         }
-      }
-
-      const response = isPrivate
-        ? await RoomService.joinRoomByCode(joinCode)
-        : await RoomService.joinRoomById(roomId);
-
-      if (response && response.success && response.data) {
-        toast.success(response.message || "Vào phòng thành công!");
-        navigate(`/game?roomId=${response.data.id || roomId}`);
+        response = await joinRoomByCode(joinCode);
       } else {
-        toast.error(response?.message || "Không thể vào phòng");
+        response = await joinRoomById(roomId);
       }
+      navigate(`/game?roomId=${response.id || roomId}`);
     } catch (error) {
       console.error("Failed to join room:", error);
       toast.error(error.message || "Lỗi kết nối, không thể vào phòng");
@@ -107,13 +104,8 @@ const LobbyPage = () => {
 
   const handleQuickPlay = async () => {
     try {
-      const response = await RoomService.quickPlay();
-      if (response && response.success && response.data) {
-        toast.success(response.message || "Tham gia chơi nhanh thành công!");
-        navigate(`/game?roomId=${response.data.id}`);
-      } else {
-        toast.error(response?.message || "Không thể tham gia chơi nhanh");
-      }
+      const response = await quickPlay();
+      navigate(`/game?roomId=${response.id}`);
     } catch (error) {
       console.error("Failed to quick play:", error);
       toast.error(
@@ -122,47 +114,32 @@ const LobbyPage = () => {
     }
   };
 
-  useEffect(() => {
-    if (!user || !AuthServices.isAuthenticated()) {
-      navigate("/login");
-      return;
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Failed to logout:", error);
+      toast.error(error.message || "Lỗi đăng xuất");
     }
+  };
 
-    // Load rooms lần đầu với notification
+  useEffect(() => {
     loadRooms(true);
-
-    // Tắt auto-refresh để tránh spam API calls
-    // User có thể click nút "Làm mới" để update manual
-    // const interval = setInterval(() => loadRooms(false), 30000);
-    // return () => clearInterval(interval);
-  }, [user, navigate]);
-
-  if (!user || !AuthServices.isAuthenticated()) {
-    return <div>Đang chuyển hướng...</div>;
-  }
+  }, [navigate]);
 
   return (
     <div className="lobby-page">
       <div className="lobby-container">
-        {/* Header */}
         <div className="lobby-header">
           <h1>🎮 Lobby Game Caro</h1>
           <div className="user-info">
             <span>Xin chào, {user?.username || "Guest"}!</span>
-            <button
-              className="btn-logout"
-              onClick={() => {
-                AuthServices.clearAuthData();
-                toast.success("Đăng xuất thành công!");
-                navigate("/login");
-              }}
-            >
+            <button className="btn-logout" onClick={handleLogout}>
               Đăng xuất
             </button>
           </div>
         </div>
 
-        {/* Actions */}
         <div className="lobby-actions">
           <button
             className="btn-create-room"
@@ -172,7 +149,7 @@ const LobbyPage = () => {
           </button>
           <button
             className="btn-refresh"
-            onClick={loadRooms}
+            onClick={() => loadRooms(true)}
             disabled={loading}
           >
             🔄 Làm mới
@@ -182,12 +159,11 @@ const LobbyPage = () => {
           </button>
         </div>
 
-        {/* Room List */}
         <div className="rooms-section">
           <div className="rooms-header">
             <h2>Danh sách phòng ({rooms.length})</h2>
-            <button 
-              className="btn-refresh" 
+            <button
+              className="btn-refresh"
               onClick={() => loadRooms(true)}
               disabled={loading}
             >
@@ -218,7 +194,7 @@ const LobbyPage = () => {
 
                     <div className="room-info">
                       <div className="players-count">
-                        👥 {room.currentPlayers || 0}/{room.maxPlayers || 2}
+                        👥 {room.playerCount || 0}/2
                       </div>
                       <div className="room-status">
                         {room.status === "WAITING"
@@ -232,8 +208,8 @@ const LobbyPage = () => {
                     <div className="room-players">
                       {room.players && room.players.length > 0 ? (
                         room.players.map((player) => (
-                          <span key={player.id} className="player-tag">
-                            {player.username}
+                          <span key={player.userId} className="player-tag">
+                            {player.displayName || player.username}
                           </span>
                         ))
                       ) : (
@@ -245,13 +221,12 @@ const LobbyPage = () => {
                       className="btn-join-room"
                       onClick={() => joinRoom(room.id, room.isPrivate)}
                       disabled={
-                        room.status === "PLAYING" ||
-                        room.currentPlayers >= room.maxPlayers
+                        room.status === "PLAYING" || room.playerCount >= 2
                       }
                     >
                       {room.status === "PLAYING"
                         ? "Đang chơi"
-                        : room.currentPlayers >= room.maxPlayers
+                        : room.playerCount >= 2
                         ? "Phòng đầy"
                         : "Vào phòng"}
                     </button>
@@ -262,7 +237,6 @@ const LobbyPage = () => {
         </div>
       </div>
 
-      {/* Create Room Modal */}
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -301,7 +275,7 @@ const LobbyPage = () => {
               >
                 Hủy
               </button>
-              <button className="btn-create" onClick={createRoom}>
+              <button className="btn-create" onClick={createRoomHandler}>
                 Tạo phòng
               </button>
             </div>

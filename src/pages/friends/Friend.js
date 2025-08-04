@@ -9,7 +9,6 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
 } from "../../services/FriendService";
-import { getFriendsOnlineStatus } from "../../services/OnlineStatusService";
 import { toast } from "react-toastify";
 import { getVietnameseMessage } from "../../constants/VietNameseStatus";
 import "./index.css";
@@ -24,14 +23,12 @@ const FriendsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [friendsOnlineStatus, setFriendsOnlineStatus] = useState([]);
 
   useEffect(() => {
     if (user) {
       loadFriends();
       loadFriendRequests();
       loadSentRequests();
-      loadFriendsOnlineStatus();
     }
   }, [user]);
 
@@ -155,41 +152,6 @@ const FriendsPage = () => {
     }
   };
 
-  const loadFriendsOnlineStatus = async () => {
-    try {
-      const response = await getFriendsOnlineStatus();
-      if (response.success && response.data) {
-        setFriendsOnlineStatus(response.data);
-        toast.success(
-          getVietnameseMessage(response.statusCode, "Lấy trạng thái online") ||
-            response.message ||
-            "Tải trạng thái online của bạn bè thành công"
-        );
-      } else {
-        throw new Error(
-          getVietnameseMessage(response.statusCode, "Lấy trạng thái online") ||
-            response.message ||
-            "Không thể tải trạng thái online của bạn bè"
-        );
-      }
-    } catch (error) {
-      console.error("Failed to load friends online status:", {
-        message: error.message,
-        status: error.response?.status,
-        errorCode: error.response?.data?.errorCode,
-      });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Lấy trạng thái online"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Không thể tải trạng thái online của bạn bè"
-      );
-    }
-  };
-
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -289,7 +251,6 @@ const FriendsPage = () => {
         );
         loadFriends();
         loadFriendRequests();
-        loadFriendsOnlineStatus();
       } else {
         throw new Error(
           getVietnameseMessage(
@@ -359,91 +320,6 @@ const FriendsPage = () => {
     }
   };
 
-  // TODO: Ideally, use dedicated APIs for canceling sent requests and removing friends
-  const handleCancelSentRequest = async (userId) => {
-    try {
-      // Using rejectFriendRequest as a fallback; consider adding a dedicated cancelFriendRequest API
-      const response = await rejectFriendRequest(userId);
-      if (response.success) {
-        toast.success(
-          getVietnameseMessage(response.statusCode, "Hủy lời mời kết bạn") ||
-            response.message ||
-            "Đã hủy lời mời kết bạn"
-        );
-        loadSentRequests();
-      } else {
-        throw new Error(
-          getVietnameseMessage(response.statusCode, "Hủy lời mời kết bạn") ||
-            response.message ||
-            "Không thể hủy lời mời kết bạn"
-        );
-      }
-    } catch (error) {
-      console.error("Failed to cancel friend request:", {
-        message: error.message,
-        status: error.response?.status,
-        errorCode: error.response?.data?.errorCode,
-      });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Hủy lời mời kết bạn"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Không thể hủy lời mời kết bạn"
-      );
-    }
-  };
-
-  // TODO: Ideally, use a dedicated removeFriend API
-  const handleRemoveFriend = async (friendId) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa bạn bè này?")) {
-      try {
-        // Using rejectFriendRequest as a fallback; consider adding a dedicated removeFriend API
-        const response = await rejectFriendRequest(friendId);
-        if (response.success) {
-          toast.success(
-            getVietnameseMessage(response.statusCode, "Xóa bạn bè") ||
-              response.message ||
-              "Đã xóa bạn bè"
-          );
-          loadFriends();
-          loadFriendsOnlineStatus();
-        } else {
-          throw new Error(
-            getVietnameseMessage(response.statusCode, "Xóa bạn bè") ||
-              response.message ||
-              "Không thể xóa bạn bè"
-          );
-        }
-      } catch (error) {
-        console.error("Failed to remove friend:", {
-          message: error.message,
-          status: error.response?.status,
-          errorCode: error.response?.data?.errorCode,
-        });
-        toast.error(
-          getVietnameseMessage(
-            error.response?.data?.statusCode,
-            "Xóa bạn bè"
-          ) ||
-            error.response?.data?.message ||
-            error.message ||
-            "Không thể xóa bạn bè"
-        );
-      }
-    }
-  };
-
-  const refreshOnlineStatus = () => {
-    loadFriendsOnlineStatus();
-    toast.info(
-      getVietnameseMessage(200, "Làm mới trạng thái online") ||
-        "Đã làm mới trạng thái online"
-    );
-  };
-
   const getFriendshipButtonText = (user) => {
     switch (user.friendshipStatus) {
       case "FRIENDS":
@@ -476,17 +352,11 @@ const FriendsPage = () => {
             e.target.src = "/default-avatar.png";
           }}
         />
-        <span
-          className={`status-indicator ${user.status ? "online" : "offline"}`}
-        ></span>
       </div>
 
       <div className="user-info">
         <h4>{user.displayName || user.username}</h4>
         <p>@{user.username}</p>
-        <span className={`status-text ${user.status ? "online" : "offline"}`}>
-          {user.status ? "Đang online" : "Offline"}
-        </span>
       </div>
 
       {showActions && (
@@ -517,32 +387,9 @@ const FriendsPage = () => {
             </>
           )}
 
-          {actionType === "cancel" && (
-            <button
-              className="btn-warning"
-              onClick={() => handleCancelSentRequest(user.id)}
-            >
-              Hủy lời mời
-            </button>
-          )}
-
           {actionType === "friend" && (
-            <>
-              <button className="btn-secondary" disabled>
-                Nhắn tin
-              </button>
-              <button
-                className="btn-danger"
-                onClick={() => handleRemoveFriend(user.id)}
-              >
-                Xóa bạn
-              </button>
-            </>
-          )}
-
-          {actionType === "online" && (
             <button className="btn-secondary" disabled>
-              Đang online
+              Nhắn tin
             </button>
           )}
 
@@ -613,22 +460,6 @@ const FriendsPage = () => {
           >
             Đã gửi ({sentRequests.length})
           </button>
-          <button
-            className={`tab ${activeTab === "online" ? "active" : ""}`}
-            onClick={() => setActiveTab("online")}
-          >
-            Bạn bè online ({friendsOnlineStatus.length})
-            <button
-              className="refresh-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                refreshOnlineStatus();
-              }}
-              title="Làm mới trạng thái online"
-            >
-              🔄
-            </button>
-          </button>
         </div>
 
         <div className="friends-content">
@@ -692,34 +523,7 @@ const FriendsPage = () => {
                         <UserCard
                           key={request.id}
                           user={request}
-                          actionType="cancel"
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === "online" && (
-                <div className="online-friends-list">
-                  {friendsOnlineStatus.length === 0 ? (
-                    <div className="empty-state">
-                      <p>Không có bạn bè nào đang online</p>
-                      <p>Hoặc bạn chưa có bạn bè nào</p>
-                    </div>
-                  ) : (
-                    <div className="users-list">
-                      {friendsOnlineStatus.map((friend) => (
-                        <UserCard
-                          key={friend.userId}
-                          user={{
-                            id: friend.userId,
-                            username: friend.displayName,
-                            displayName: friend.displayName,
-                            avatarUrl: friend.avatarUrl,
-                            status: friend.status,
-                          }}
-                          actionType="online"
+                          showActions={false} // Không có action cancel
                         />
                       ))}
                     </div>

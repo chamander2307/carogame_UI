@@ -1,10 +1,10 @@
 import React, { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Login.css";
-import AuthServices from "../../../services/AuthServices";
+import { Link, useNavigate } from "react-router-dom";
+import { login } from "../../../services/AuthService"; // Import đúng hàm
 import { UserContext } from "../../../context/UserContext";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import { toast } from "react-toastify";
+import "./Login.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const LoginPage = () => {
   };
 
   const validateForm = () => {
-    // Username validation (theo LoginRequest DTO)
+    // Username validation
     if (
       !formData.username ||
       formData.username.length < 3 ||
@@ -39,7 +39,7 @@ const LoginPage = () => {
       return false;
     }
 
-    // Password validation (theo LoginRequest DTO)
+    // Password validation
     if (
       !formData.password ||
       formData.password.length < 8 ||
@@ -61,18 +61,15 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      // Gọi AuthServices.login với username và password
-      const data = await AuthServices.login(
-        formData.username,
-        formData.password
-      );
-
-      if (!data.success) {
-        throw new Error(data.message || "Đăng nhập không thành công");
-      }
+      // Gọi login với object loginData
+      const loginData = {
+        username: formData.username,
+        password: formData.password,
+      };
+      const data = await login(loginData);
 
       // Sử dụng handleLoginSuccess từ UserContext
-      const loginSuccess = handleLoginSuccess(data.data);
+      const loginSuccess = handleLoginSuccess(data);
 
       if (!loginSuccess) {
         throw new Error("Không thể cập nhật thông tin người dùng");
@@ -102,6 +99,7 @@ const LoginPage = () => {
       setLoading(false);
     }
   };
+
   return (
     <AuthLayout title="Đăng nhập" image="/images/caro-bg.jpg">
       <p className="auth__slogan">Chào mừng đến với trò chơi Caro</p>
@@ -144,10 +142,10 @@ const LoginPage = () => {
         </button>
       </form>
       <div className="auth__extra">
-        <a href="/forgot-password">Quên mật khẩu?</a>
+        <Link to="/forgot-password">Quên mật khẩu?</Link>
         <br />
         <span>Chưa có tài khoản? </span>
-        <a href="/register">Đăng ký ngay</a>
+        <Link to="/register">Đăng ký ngay</Link>
       </div>
     </AuthLayout>
   );

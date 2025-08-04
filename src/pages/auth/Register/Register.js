@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Register.css";
-import AuthServices from "../../../services/AuthServices";
+import { Link, useNavigate } from "react-router-dom";
+import { register } from "../../../services/AuthService"; // Import đúng hàm
 import AuthLayout from "../../../components/auth/AuthLayout";
 import { toast } from "react-toastify";
+import "./Register.css";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const RegisterPage = () => {
   };
 
   const validateForm = () => {
-    // Username validation (theo UserCreation DTO)
+    // Username validation
     if (
       !formData.username ||
       formData.username.length < 3 ||
@@ -46,7 +46,7 @@ const RegisterPage = () => {
       return false;
     }
 
-    // Password validation (theo UserCreation DTO)
+    // Password validation
     if (
       !formData.password ||
       formData.password.length < 8 ||
@@ -79,16 +79,17 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      // Gọi AuthServices.register với userData
-      const data = await AuthServices.register({
+      // Gọi register với userData
+      const data = await register({
         username: formData.username,
         email: formData.email,
         displayName: formData.displayName,
         password: formData.password,
       });
 
-      if (data.success) {
-        toast.success(data.message || "Đăng ký thành công!", {
+      // Giả định response.data.data có success và message
+      if (data) {
+        toast.success("Đăng ký thành công!", {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -96,7 +97,6 @@ const RegisterPage = () => {
           pauseOnHover: true,
           draggable: true,
         });
-
         navigate("/login");
       }
     } catch (error) {
@@ -198,7 +198,7 @@ const RegisterPage = () => {
       </form>
       <div className="auth__extra">
         <span>Đã có tài khoản? </span>
-        <a href="/login">Đăng nhập ngay</a>
+        <Link to="/login">Đăng nhập ngay</Link> {/* Sửa từ <a> thành <Link> */}
       </div>
     </AuthLayout>
   );

@@ -1,276 +1,93 @@
 import instance from "../config/axios";
-import { getVietnameseMessage } from "../constants/VietNameseStatus";
 import { toast } from "react-toastify";
+import { getVietnameseMessage } from "../constants/VietNameseStatus";
 
+// Helper function to handle API errors
+const handleApiError = (
+  error,
+  defaultMessage = "Có lỗi xảy ra, vui lòng thử lại"
+) => {
+  const errorMessage = error.response?.data?.message || defaultMessage;
+  const vietnameseMessage =
+    getVietnameseMessage(error.response?.data?.errorCode) || errorMessage;
+  toast.error(vietnameseMessage);
+  if (error.response?.status === 401) {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/login";
+  }
+  throw new Error(vietnameseMessage);
+};
+
+// Search Users
 export const searchUsers = async (searchTerm) => {
   try {
     const response = await instance.post("/friends/search", { searchTerm });
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(data.statusCode, "Tìm kiếm người dùng") ||
-          data.message ||
-          "Tìm kiếm người dùng thành công",
-        data: data.data || [],
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Tìm kiếm người dùng") ||
-        data.message ||
-        "Tìm kiếm người dùng không thành công"
-    );
+    return response.data.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error("Lỗi tìm kiếm người dùng:", error.message, "| Mã lỗi:", code);
-    toast.error(
-      getVietnameseMessage(code, "Tìm kiếm người dùng") ||
-        error.response?.data?.message ||
-        "Tìm kiếm người dùng không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Tìm kiếm người dùng") ||
-        error.response?.data?.message ||
-        "Tìm kiếm người dùng không thành công"
-    );
+    handleApiError(error, "Tìm kiếm người dùng thất bại");
   }
 };
 
+// Send Friend Request
 export const sendFriendRequest = async (userId) => {
   try {
-    const response = await instance.post(`/friends/request/${userId}`);
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(data.statusCode, "Gửi lời mời kết bạn") ||
-          data.message ||
-          "Gửi lời mời kết bạn thành công",
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Gửi lời mời kết bạn") ||
-        data.message ||
-        "Gửi lời mời kết bạn không thành công"
-    );
+    const response = await instance.post(`/friends/${userId}/request`);
+    toast.success("Gửi lời mời kết bạn thành công");
+    return response.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error("Lỗi gửi lời mời kết bạn:", error.message, "| Mã lỗi:", code);
-    toast.error(
-      getVietnameseMessage(code, "Gửi lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Gửi lời mời kết bạn không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Gửi lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Gửi lời mời kết bạn không thành công"
-    );
+    handleApiError(error, "Gửi lời mời kết bạn thất bại");
   }
 };
 
+// Accept Friend Request
 export const acceptFriendRequest = async (userId) => {
   try {
-    const response = await instance.post(`/friends/accept/${userId}`);
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(data.statusCode, "Chấp nhận lời mời kết bạn") ||
-          data.message ||
-          "Chấp nhận lời mời kết bạn thành công",
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Chấp nhận lời mời kết bạn") ||
-        data.message ||
-        "Chấp nhận lời mời kết bạn không thành công"
-    );
+    const response = await instance.post(`/friends/${userId}/accept`);
+    toast.success("Chấp nhận lời mời kết bạn thành công");
+    return response.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error(
-      "Lỗi chấp nhận lời mời kết bạn:",
-      error.message,
-      "| Mã lỗi:",
-      code
-    );
-    toast.error(
-      getVietnameseMessage(code, "Chấp nhận lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Chấp nhận lời mời kết bạn không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Chấp nhận lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Chấp nhận lời mời kết bạn không thành công"
-    );
+    handleApiError(error, "Chấp nhận lời mời kết bạn thất bại");
   }
 };
 
+// Reject Friend Request
 export const rejectFriendRequest = async (userId) => {
   try {
-    const response = await instance.post(`/friends/reject/${userId}`);
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(data.statusCode, "Từ chối lời mời kết bạn") ||
-          data.message ||
-          "Từ chối lời mời kết bạn thành công",
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Từ chối lời mời kết bạn") ||
-        data.message ||
-        "Từ chối lời mời kết bạn không thành công"
-    );
+    const response = await instance.post(`/friends/${userId}/reject`);
+    toast.success("Từ chối lời mời kết bạn thành công");
+    return response.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error(
-      "Lỗi từ chối lời mời kết bạn:",
-      error.message,
-      "| Mã lỗi:",
-      code
-    );
-    toast.error(
-      getVietnameseMessage(code, "Từ chối lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Từ chối lời mời kết bạn không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Từ chối lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Từ chối lời mời kết bạn không thành công"
-    );
+    handleApiError(error, "Từ chối lời mời kết bạn thất bại");
   }
 };
 
+// Get Friends List
 export const getFriendsList = async () => {
   try {
     const response = await instance.get("/friends");
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(data.statusCode, "Lấy danh sách bạn bè") ||
-          data.message ||
-          "Lấy danh sách bạn bè thành công",
-        data: data.data || [],
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Lấy danh sách bạn bè") ||
-        data.message ||
-        "Lấy danh sách bạn bè không thành công"
-    );
+    return response.data.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error(
-      "Lỗi lấy danh sách bạn bè:",
-      error.message,
-      "| Mã lỗi:",
-      code
-    );
-    toast.error(
-      getVietnameseMessage(code, "Lấy danh sách bạn bè") ||
-        error.response?.data?.message ||
-        "Lấy danh sách bạn bè không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Lấy danh sách bạn bè") ||
-        error.response?.data?.message ||
-        "Lấy danh sách bạn bè không thành công"
-    );
+    handleApiError(error, "Lấy danh sách bạn bè thất bại");
   }
 };
 
+// Get Pending Friend Requests
 export const getPendingFriendRequests = async () => {
   try {
     const response = await instance.get("/friends/requests/received");
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(
-            data.statusCode,
-            "Lấy danh sách lời mời kết bạn"
-          ) ||
-          data.message ||
-          "Lấy danh sách lời mời kết bạn thành công",
-        data: data.data || [],
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Lấy danh sách lời mời kết bạn") ||
-        data.message ||
-        "Lấy danh sách lời mời kết bạn không thành công"
-    );
+    return response.data.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error(
-      "Lỗi lấy danh sách lời mời kết bạn:",
-      error.message,
-      "| Mã lỗi:",
-      code
-    );
-    toast.error(
-      getVietnameseMessage(code, "Lấy danh sách lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Lấy danh sách lời mời kết bạn không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Lấy danh sách lời mời kết bạn") ||
-        error.response?.data?.message ||
-        "Lấy danh sách lời mời kết bạn không thành công"
-    );
+    handleApiError(error, "Lấy danh sách lời mời kết bạn thất bại");
   }
 };
 
+// Get Sent Friend Requests
 export const getSentFriendRequests = async () => {
   try {
     const response = await instance.get("/friends/requests/sent");
-    const data = response.data;
-    if (data?.success) {
-      return {
-        success: true,
-        message:
-          getVietnameseMessage(
-            data.statusCode,
-            "Lấy danh sách lời mời đã gửi"
-          ) ||
-          data.message ||
-          "Lấy danh sách lời mời đã gửi thành công",
-        data: data.data || [],
-      };
-    }
-    throw new Error(
-      getVietnameseMessage(data.statusCode, "Lấy danh sách lời mời đã gửi") ||
-        data.message ||
-        "Lấy danh sách lời mời đã gửi không thành công"
-    );
+    return response.data.data;
   } catch (error) {
-    const code = error.response?.data?.statusCode;
-    console.error(
-      "Lỗi lấy danh sách lời mời đã gửi:",
-      error.message,
-      "| Mã lỗi:",
-      code
-    );
-    toast.error(
-      getVietnameseMessage(code, "Lấy danh sách lời mời đã gửi") ||
-        error.response?.data?.message ||
-        "Lấy danh sách lời mời đã gửi không thành công"
-    );
-    throw new Error(
-      getVietnameseMessage(code, "Lấy danh sách lời mời đã gửi") ||
-        error.response?.data?.message ||
-        "Lấy danh sách lời mời đã gửi không thành công"
-    );
+    handleApiError(error, "Lấy danh sách lời mời đã gửi thất bại");
   }
 };

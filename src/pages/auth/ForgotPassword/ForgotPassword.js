@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import AuthServices from "../../../services/AuthServices";
+import { forgotPassword } from "../../../services/AuthService"; // Import đúng hàm
 import { toast } from "react-toastify";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import "./ForgotPassword.css";
@@ -31,17 +31,12 @@ const ForgotPasswordPage = () => {
 
     setLoading(true);
     try {
-      // Gọi AuthServices.forgotPassword
-      const result = await AuthServices.forgotPassword(
-        email.trim().toLowerCase()
-      );
+      // Gọi forgotPassword với object { email }
+      const result = await forgotPassword(email.trim().toLowerCase());
 
-      if (result.success) {
-        setIsSuccess(true);
-        toast.success(
-          result.message || "Mã OTP đã được gửi đến email của bạn!"
-        );
-      }
+      setIsSuccess(true);
+      toast.success("Mã OTP đã được gửi đến email của bạn!");
+      // Không cần kiểm tra result.success vì AuthService.js đã xử lý toast
     } catch (error) {
       console.error("Forgot password error:", error);
       toast.error(error.message || "Có lỗi xảy ra. Vui lòng thử lại sau.");

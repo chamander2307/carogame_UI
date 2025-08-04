@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import AuthServices from "../../../services/AuthServices";
+import { resetPassword } from "../../../services/AuthService"; // Import đúng hàm
 import { toast } from "react-toastify";
 import AuthLayout from "../../../components/auth/AuthLayout";
 import "./ResetPassword.css";
@@ -39,13 +39,13 @@ const ResetPasswordPage = () => {
       return false;
     }
 
-    // OTP validation (theo ChangePasswordRequest DTO pattern)
+    // OTP validation
     if (!formData.otp || !/^\d{6}$/.test(formData.otp)) {
       toast.error("OTP phải là 6 chữ số!");
       return false;
     }
 
-    // Password validation (theo pattern tương tự LoginRequest)
+    // Password validation
     if (
       !formData.newPassword ||
       formData.newPassword.length < 8 ||
@@ -72,12 +72,13 @@ const ResetPasswordPage = () => {
 
     setLoading(true);
     try {
-      // Gọi AuthServices.resetPassword
-      const result = await AuthServices.resetPassword(
-        formData.email.trim().toLowerCase(),
-        formData.otp,
-        formData.newPassword
-      );
+      // Gọi resetPassword với object resetData
+      const resetData = {
+        email: formData.email.trim().toLowerCase(),
+        otp: formData.otp,
+        newPassword: formData.newPassword,
+      };
+      const result = await resetPassword(resetData); // Sửa từ AuthServices thành resetPassword
 
       if (result.success) {
         toast.success(result.message || "Đặt lại mật khẩu thành công!");

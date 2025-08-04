@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../../context/UserContext";
-import StatisticsService from "../../services/StatisticsService";
+import {
+  getUserGameStatistics,
+  getUserGameReplays,
+  getGameReplay,
+} from "../../services/GameStatisticsService";
 import { toast } from "react-toastify";
-import { getVietnameseMessage } from "../../constants/VietNameseStatus";
 import "./index.css";
 
 const HistoryPage = () => {
@@ -30,41 +33,12 @@ const HistoryPage = () => {
   const loadGameHistory = async () => {
     try {
       setLoading(true);
-      const response = await StatisticsService.getUserGameHistory(
-        currentPage,
-        10,
-        "desc"
-      );
-      if (response.success && response.data) {
-        setGameHistory(response.data.content || []);
-        setTotalPages(response.data.totalPages || 0);
-        toast.success(
-          getVietnameseMessage(response.statusCode, "Lấy lịch sử game") ||
-            response.message ||
-            "Tải lịch sử trận đấu thành công"
-        );
-      } else {
-        throw new Error(
-          getVietnameseMessage(response.statusCode, "Lấy lịch sử game") ||
-            response.message ||
-            "Không thể tải lịch sử trận đấu"
-        );
-      }
+      const response = await getUserGameReplays(currentPage, 10, "desc");
+      setGameHistory(response.content || []);
+      setTotalPages(response.totalPages || 0);
     } catch (error) {
-      console.error("Failed to load game history:", {
-        message: error.message,
-        status: error.response?.status,
-        errorCode: error.response?.data?.errorCode,
-      });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Lấy lịch sử game"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Có lỗi xảy ra khi tải lịch sử trận đấu"
-      );
+      console.error("Failed to load game history:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi tải lịch sử trận đấu");
     } finally {
       setLoading(false);
     }
@@ -72,42 +46,17 @@ const HistoryPage = () => {
 
   const loadUserStats = async () => {
     try {
-      const response = await StatisticsService.getUserStats();
-      if (response.success && response.data) {
-        setUserStats({
-          totalGamesPlayed: response.data.totalGamesPlayed || 0,
-          totalWins: response.data.totalWins || 0,
-          totalLosses: response.data.totalLosses || 0,
-          totalDraws: response.data.totalDraws || 0,
-          winRate: response.data.winRate || 0,
-        });
-        toast.success(
-          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
-            response.message ||
-            "Tải thống kê người dùng thành công"
-        );
-      } else {
-        throw new Error(
-          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
-            response.message ||
-            "Không thể tải thống kê người dùng"
-        );
-      }
-    } catch (error) {
-      console.error("Failed to load user stats:", {
-        message: error.message,
-        status: error.response?.status,
-        errorCode: error.response?.data?.errorCode,
+      const response = await getUserGameStatistics();
+      setUserStats({
+        totalGamesPlayed: response.totalGamesPlayed || 0,
+        totalWins: response.totalWins || 0,
+        totalLosses: response.totalLosses || 0,
+        totalDraws: response.totalDraws || 0,
+        winRate: response.winRate || 0,
       });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Lấy thống kê"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Có lỗi xảy ra khi tải thống kê người dùng"
-      );
+    } catch (error) {
+      console.error("Failed to load user stats:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi tải thống kê người dùng");
     }
   };
 
@@ -157,32 +106,12 @@ const HistoryPage = () => {
 
   const handleViewGame = async (gameId) => {
     try {
-      const response = await StatisticsService.getGameReplay(gameId);
-      if (response.success && response.data) {
-        console.log("Game replay:", response.data);
-        toast.info("Tính năng xem lại trận đấu sẽ được cập nhật sớm");
-      } else {
-        throw new Error(
-          getVietnameseMessage(response.statusCode, "Lấy replay game") ||
-            response.message ||
-            "Không thể tải replay trận đấu"
-        );
-      }
+      const response = await getGameReplay(gameId);
+      console.log("Game replay:", response);
+      toast.info("Tính năng xem lại trận đấu sẽ được cập nhật sớm");
     } catch (error) {
-      console.error("Failed to load game replay:", {
-        message: error.message,
-        status: error.response?.status,
-        errorCode: error.response?.data?.errorCode,
-      });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Lấy replay game"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Có lỗi xảy ra khi tải replay trận đấu"
-      );
+      console.error("Failed to load game replay:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi tải replay trận đấu");
     }
   };
 

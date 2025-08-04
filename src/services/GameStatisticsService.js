@@ -69,7 +69,7 @@ export const getUserGameReplays = async (
 export const getTopPlayers = async (limit = 10, page = 0, size = 10) => {
   try {
     const response = await instance.get(
-      `/api/statistics/leaderboard?limit=${limit}&page=${page}&size=${size}`
+      `/statistics/leaderboard?limit=${limit}&page=${page}&size=${size}`
     );
     return response.data.data;
   } catch (error) {

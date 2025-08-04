@@ -1,10 +1,14 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
-import { UserContext } from "../../../context/UserContext";
-import UserProfileService from "../../../services/UserProfileService";
-import StatisticsService from "../../../services/StatisticsService";
-import ChangePassword from "../../../components/auth/ChangePassword";
+import { UserContext } from "../../../context/UserContext.js";
+import {
+  getUserProfile,
+  updateProfile,
+  uploadAvatar,
+  updateProfileWithAvatar,
+} from "../../../services/UserProfileService.js";
+import { getUserGameStatistics } from "../../../services/GameStatisticsService.js";
+import ChangePassword from "../../../components/auth/ChangePassword.js";
 import { toast } from "react-toastify";
-import { getVietnameseMessage } from "../../../constants/VietNameseStatus";
 import "./index.css";
 
 const ProfilePage = () => {
@@ -18,7 +22,7 @@ const ProfilePage = () => {
 
   const [formData, setFormData] = useState({
     username: user?.username || "",
-    displayName: user?.displayName || user?.fullName || "",
+    displayName: user?.displayName || "",
     email: user?.email || "",
   });
 
@@ -29,62 +33,38 @@ const ProfilePage = () => {
     totalDraws: 0,
     winRate: 0,
     bestWinStreak: 0,
-    favoriteOpponent: "N/A",
   });
 
   useEffect(() => {
     if (user) {
       setFormData({
         username: user.username || "",
-        displayName: user.displayName || user.fullName || "",
+        displayName: user.displayName || "",
         email: user.email || "",
       });
-
-      // Load user statistics from StatisticsService
       loadUserStats();
     }
   }, [user]);
 
   const loadUserStats = async () => {
     try {
-      const response = await StatisticsService.getUserStats();
-      if (response.success && response.data) {
-        setStats({
-          totalGamesPlayed: response.data.totalGamesPlayed || 0,
-          totalWins: response.data.totalWins || 0,
-          totalLosses: response.data.totalLosses || 0,
-          totalDraws: response.data.totalDraws || 0,
-          winRate: response.data.winRate || 0,
-          bestWinStreak: response.data.bestWinStreak || 0,
-          favoriteOpponent: response.data.favoriteOpponent || "N/A",
-        });
-        toast.success(
-          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
-            response.message ||
-            "Lấy thống kê người dùng thành công"
-        );
-      } else {
-        throw new Error(
-          getVietnameseMessage(response.statusCode, "Lấy thống kê") ||
-            response.message ||
-            "Không thể tải thống kê người dùng"
-        );
-      }
+      const response = await getUserGameStatistics();
+      setStats({
+        totalGamesPlayed: response.totalGamesPlayed || 0,
+        totalWins: response.totalWins || 0,
+        totalLosses: response.totalLosses || 0,
+        totalDraws: response.totalDraws || 0,
+        winRate: response.winRate || 0,
+        bestWinStreak: response.bestWinStreak || 0,
+      });
+      toast.success("Lấy thống kê người dùng thành công");
     } catch (error) {
       console.error("Failed to load user stats:", {
         message: error.message,
         status: error.response?.status,
         errorCode: error.response?.data?.errorCode,
       });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Lấy thống kê"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Không thể tải thống kê người dùng"
-      );
+      toast.error(error.message || "Không thể tải thống kê người dùng");
     }
   };
 
@@ -112,72 +92,49 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      // Validate form based on typical backend constraints
       if (!formData.username.trim()) {
-        toast.error(
-          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
-            "Tên đăng nhập không được để trống"
-        );
+        toast.error("Tên đăng nhập không được để trống");
         return;
       }
-      if (formData.username.length < 3 || formData.username.length > 20) {
-        toast.error(
-          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
-            "Tên đăng nhập phải từ 3-20 ký tự"
-        );
+      if (formData.username.length < 3 || formData.username.length > 50) {
+        toast.error("Tên đăng nhập phải từ 3-50 ký tự");
         return;
       }
       if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        toast.error(
-          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
-            "Tên đăng nhập chỉ chứa chữ cái, số và dấu gạch dưới"
-        );
+        toast.error("Tên đăng nhập chỉ chứa chữ cái, số và dấu gạch dưới");
         return;
       }
       if (formData.displayName && formData.displayName.length > 50) {
-        toast.error(
-          getVietnameseMessage(400, "Cập nhật hồ sơ") ||
-            "Tên hiển thị tối đa 50 ký tự"
-        );
+        toast.error("Tên hiển thị tối đa 50 ký tự");
         return;
       }
 
-      // Update profile using UserProfileService
-      const result = await UserProfileService.updateProfile({
-        username: formData.username.trim(),
-        displayName: formData.displayName.trim() || null,
-      });
-
-      if (result.success) {
-        toast.success(
-          getVietnameseMessage(result.statusCode, "Cập nhật hồ sơ") ||
-            result.message ||
-            "Cập nhật thông tin thành công!"
+      let result;
+      if (selectedAvatar) {
+        result = await updateProfileWithAvatar(
+          {
+            username: formData.username.trim(),
+            displayName: formData.displayName.trim() || null,
+          },
+          selectedAvatar
         );
-        await refreshUserProfile();
-        setIsEditing(false);
       } else {
-        throw new Error(
-          getVietnameseMessage(result.statusCode, "Cập nhật hồ sơ") ||
-            result.message ||
-            "Cập nhật thông tin thất bại"
-        );
+        result = await updateProfile({
+          username: formData.username.trim(),
+          displayName: formData.displayName.trim() || null,
+        });
       }
+
+      await refreshUserProfile();
+      setIsEditing(false);
+      setSelectedAvatar(null);
     } catch (error) {
       console.error("Update profile error:", {
         message: error.message,
         status: error.response?.status,
         errorCode: error.response?.data?.errorCode,
       });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Cập nhật hồ sơ"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Cập nhật thông tin thất bại"
-      );
+      toast.error(error.message || "Cập nhật thông tin thất bại");
     } finally {
       setLoading(false);
     }
@@ -185,45 +142,22 @@ const ProfilePage = () => {
 
   const handleAvatarUpload = async () => {
     if (!selectedAvatar) {
-      toast.error(
-        getVietnameseMessage(400, "Tải lên avatar") || "Vui lòng chọn ảnh trước"
-      );
+      toast.error("Vui lòng chọn ảnh trước");
       return;
     }
 
     setAvatarLoading(true);
     try {
-      const result = await UserProfileService.uploadAvatar(selectedAvatar);
-      if (result.success) {
-        toast.success(
-          getVietnameseMessage(result.statusCode, "Tải lên avatar") ||
-            result.message ||
-            "Cập nhật ảnh đại diện thành công!"
-        );
-        setSelectedAvatar(null);
-        await refreshUserProfile();
-      } else {
-        throw new Error(
-          getVietnameseMessage(result.statusCode, "Tải lên avatar") ||
-            result.message ||
-            "Cập nhật ảnh đại diện thất bại"
-        );
-      }
+      const result = await uploadAvatar(selectedAvatar);
+      await refreshUserProfile();
+      setSelectedAvatar(null);
     } catch (error) {
       console.error("Upload avatar error:", {
         message: error.message,
         status: error.response?.status,
         errorCode: error.response?.data?.errorCode,
       });
-      toast.error(
-        getVietnameseMessage(
-          error.response?.data?.statusCode,
-          "Tải lên avatar"
-        ) ||
-          error.response?.data?.message ||
-          error.message ||
-          "Cập nhật ảnh đại diện thất bại"
-      );
+      toast.error(error.message || "Cập nhật ảnh đại diện thất bại");
     } finally {
       setAvatarLoading(false);
     }
@@ -233,7 +167,7 @@ const ProfilePage = () => {
     if (user) {
       setFormData({
         username: user.username || "",
-        displayName: user.displayName || user.fullName || "",
+        displayName: user.displayName || "",
         email: user.email || "",
       });
     }
